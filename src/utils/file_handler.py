@@ -8,6 +8,7 @@ from typing import List, Optional
 import os
 import shutil
 import mimetypes
+import subprocess
 from dataclasses import dataclass
 
 from .config import Config
@@ -403,3 +404,51 @@ class FileHandler:
         except Exception as e:
             if self.config.verbose:
                 print(f"⚠️  Directory cleanup error: {e}")
+    
+    def convert_to_mp3(self, source: Path, destination: Path, bitrate: str = "128k") -> bool:
+        """
+        Convert audio file to MP3 format using FFmpeg
+        
+        Args:
+            source: Source audio file path
+            destination: Destination MP3 file path
+            bitrate: MP3 bitrate (default: 128k for good quality/size balance)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Ensure destination directory exists
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Build FFmpeg command
+            cmd = [
+                'ffmpeg',
+                '-i', str(source),
+                '-c:a', 'libmp3lame',
+                '-b:a', bitrate,
+                '-y',  # Overwrite output file
+                str(destination)
+            ]
+            
+            # Run conversion
+            if self.config.verbose:
+                print(f"🔄 Converting {source.name} to MP3...")
+                result = subprocess.run(cmd, capture_output=True, text=True)
+            else:
+                result = subprocess.run(cmd, capture_output=True, text=True, 
+                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            if result.returncode == 0:
+                if self.config.verbose:
+                    print(f"✅ Converted: {source.name} -> {destination.name}")
+                return True
+            else:
+                if self.config.verbose:
+                    print(f"❌ Conversion failed: {result.stderr}")
+                return False
+        
+        except Exception as e:
+            if self.config.verbose:
+                print(f"❌ Conversion error: {e}")
+            return False

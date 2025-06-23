@@ -94,17 +94,17 @@ def cli(input_file: Path,
         file_info = file_handler.get_file_info(input_file)
         
         if file_info and file_info.is_audio and not file_info.is_video:
-            # Audio-only processing - just copy the isolated tracks
+            # Audio-only processing - convert to MP3 for smaller size
             click.echo("🎵 Processing audio-only file...")
             output_files = []
             for i, (_, audio_track) in enumerate(isolated_tracks.items()):
-                output_file = output_dir / f"{input_file.stem}_speaker_{i+1}.wav"
+                output_file = output_dir / f"{input_file.stem}_speaker_{i+1}.mp3"
                 
                 if verbose:
                     click.echo(f"Creating {output_file}")
                 
-                # Copy isolated audio track to output
-                file_handler.copy_file(audio_track, output_file)
+                # Convert isolated audio track to MP3 for smaller size
+                file_handler.convert_to_mp3(audio_track, output_file)
                 output_files.append(output_file)
         else:
             # Step 3: Video Processing
