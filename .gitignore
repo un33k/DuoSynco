@@ -180,12 +180,13 @@ temp/
 tmp/
 duosynco_temp/
 
-# Sample data (keep structure but ignore actual files)
+# Sample data (keep structure but ignore actual files except provided samples)
 sample_data/*.mp4
 sample_data/*.avi
 sample_data/*.mov
 sample_data/*.mp3
-sample_data/*.wav
+# Keep sample files for testing
+!sample_data/TheAnnunaki.wav
 
 # Model cache and downloads
 .cache/
@@ -202,7 +203,6 @@ ehthumbs.db
 Thumbs.db
 
 # IDE and editor files
-.vscode/settings.json
 .idea/
 *.swp
 *.swo
