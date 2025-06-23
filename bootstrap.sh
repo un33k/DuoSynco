@@ -59,6 +59,96 @@ ask() {
     [[ "$response" =~ ^[Yy] ]]
 }
 
+# Detect Linux distribution
+detect_linux_distro() {
+    if command -v apt-get >/dev/null 2>&1; then
+        echo "debian"
+    elif command -v yum >/dev/null 2>&1; then
+        echo "rhel"
+    elif command -v dnf >/dev/null 2>&1; then
+        echo "fedora"
+    else
+        echo "unknown"
+    fi
+}
+
+# Check and install Homebrew on macOS
+check_brew() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        if command -v brew >/dev/null 2>&1; then
+            log "Homebrew found: $(brew --version | head -n1)"
+            return 0
+        else
+            warn "Homebrew not found"
+            if ask "Install Homebrew?"; then
+                echo -e "${BLUE}Installing Homebrew...${NC}"
+                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+                log "Homebrew installed successfully"
+            else
+                warn "Homebrew is required for macOS installations"
+                return 1
+            fi
+        fi
+    fi
+    return 0
+}
+
+# Check and install FFmpeg
+check_ffmpeg() {
+    if command -v ffmpeg >/dev/null 2>&1; then
+        log "FFmpeg found: $(ffmpeg -version 2>&1 | head -n1 | cut -d' ' -f3)"
+        return 0
+    else
+        warn "FFmpeg not found (recommended for best performance)"
+        if ask "Install FFmpeg?"; then
+            install_ffmpeg
+        else
+            warn "Continuing without FFmpeg (some features may be limited)"
+        fi
+    fi
+}
+
+# Install FFmpeg based on OS
+install_ffmpeg() {
+    echo -e "${BLUE}Installing FFmpeg...${NC}"
+    
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        if command -v brew >/dev/null 2>&1; then
+            brew install ffmpeg
+            log "FFmpeg installed via Homebrew"
+        else
+            error "Homebrew required for FFmpeg installation on macOS"
+        fi
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux
+        local distro=$(detect_linux_distro)
+        case $distro in
+            "debian")
+                sudo apt-get update && sudo apt-get install -y ffmpeg
+                log "FFmpeg installed via apt"
+                ;;
+            "rhel")
+                sudo yum install -y epel-release && sudo yum install -y ffmpeg
+                log "FFmpeg installed via yum"
+                ;;
+            "fedora")
+                sudo dnf install -y ffmpeg
+                log "FFmpeg installed via dnf"
+                ;;
+            *)
+                warn "Unknown Linux distribution. Please install FFmpeg manually:"
+                echo "  - Debian/Ubuntu: sudo apt install ffmpeg"
+                echo "  - RHEL/CentOS: sudo yum install ffmpeg"
+                echo "  - Fedora: sudo dnf install ffmpeg"
+                ;;
+        esac
+    else
+        warn "Unsupported OS for automatic FFmpeg installation"
+        echo "Please install FFmpeg manually: https://ffmpeg.org/"
+    fi
+}
+
 # Check if pyenv is installed
 check_pyenv() {
     if command -v pyenv >/dev/null 2>&1; then
@@ -78,11 +168,34 @@ install_pyenv() {
         # macOS
         if command -v brew >/dev/null 2>&1; then
             brew install pyenv
+            log "pyenv installed via Homebrew"
         else
-            error "Homebrew not found. Please install Homebrew first: https://brew.sh"
+            error "Homebrew required for pyenv installation on macOS"
         fi
     elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        # Linux
+        # Linux - install dependencies first
+        local distro=$(detect_linux_distro)
+        case $distro in
+            "debian")
+                sudo apt-get update
+                sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
+                    libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
+                    libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
+                    libffi-dev liblzma-dev
+                ;;
+            "rhel")
+                sudo yum groupinstall -y "Development Tools"
+                sudo yum install -y gcc openssl-devel bzip2-devel libffi-devel \
+                    zlib-devel readline-devel sqlite-devel
+                ;;
+            "fedora")
+                sudo dnf groupinstall -y "Development Tools"
+                sudo dnf install -y gcc openssl-devel bzip2-devel libffi-devel \
+                    zlib-devel readline-devel sqlite-devel
+                ;;
+        esac
+        
+        # Install pyenv
         curl https://pyenv.run | bash
         
         # Add to shell profile
@@ -96,8 +209,6 @@ install_pyenv() {
     else
         error "Unsupported OS. Please install pyenv manually: https://github.com/pyenv/pyenv"
     fi
-    
-    log "pyenv installed successfully"
 }
 
 # Install Python version
@@ -149,6 +260,12 @@ main() {
     echo "Setting up Python $PYTHON_VERSION environment..."
     echo
     
+    # Check/install Homebrew (macOS only)
+    check_brew
+    
+    # Check/install FFmpeg
+    check_ffmpeg
+    
     # Check/install pyenv
     if ! check_pyenv; then
         if ask "Install pyenv?"; then
@@ -171,6 +288,7 @@ main() {
     log "Bootstrap complete!"
     echo -e "${GREEN}To activate the environment:${NC} source $VENV_DIR/bin/activate"
     echo -e "${GREEN}To run DuoSynco:${NC} ./scripts/run.sh input.mp4"
+    echo -e "${GREEN}Quick test:${NC} ./scripts/run.sh sample_data/TheAnnunaki.wav --speakers 2 --verbose"
 }
 
 main "$@"
