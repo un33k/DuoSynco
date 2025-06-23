@@ -7,3 +7,5 @@ torch>=1.13.0
 torchaudio>=0.13.0
 numpy>=1.21.0
 scipy>=1.7.0
+demucs>=4.0.0
+speechbrain>=0.5.0

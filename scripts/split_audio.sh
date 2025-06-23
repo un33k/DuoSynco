@@ -103,6 +103,26 @@ validate_input() {
     print_message $GREEN "✅ Input file validated: $INPUT_FILE"
 }
 
+# Clean output files for this input
+clean_output_files() {
+    # Create output directory if it doesn't exist
+    mkdir -p "$OUTPUT_DIR"
+    
+    # Get base name of input file for cleaning related files
+    INPUT_BASE=$(basename "$INPUT_FILE" | sed 's/\.[^.]*$//')
+    
+    # Remove any existing files for this input
+    if [ -d "$OUTPUT_DIR" ]; then
+        # Remove files that match our output pattern
+        rm -f "$OUTPUT_DIR"/${INPUT_BASE}_speaker_*.mp3 2>/dev/null || true
+        rm -f "$OUTPUT_DIR"/${INPUT_BASE}_speaker_*.wav 2>/dev/null || true
+        
+        if [ "$VERBOSE" = true ]; then
+            print_message $BLUE "🧹 Cleaned existing output files for: $INPUT_BASE"
+        fi
+    fi
+}
+
 # Main execution
 main() {
     print_message $BLUE "🎵 DuoSynco Audio Splitter"
@@ -112,6 +132,9 @@ main() {
     
     # Validate input
     validate_input
+    
+    # Clean existing output files for this input
+    clean_output_files
     
     # Get script directory and project root
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
