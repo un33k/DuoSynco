@@ -4,7 +4,7 @@ Manages file operations, validation, and path handling
 """
 
 from pathlib import Path
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional
 import os
 import shutil
 import mimetypes
