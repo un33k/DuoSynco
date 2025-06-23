@@ -90,25 +90,42 @@ def cli(input_file: Path,
         isolator = VoiceIsolator(config)
         isolated_tracks = isolator.isolate_speakers(input_file, speaker_segments)
         
-        # Step 3: Video Processing
-        click.echo("🎬 Processing video...")
-        video_processor = VideoProcessor(config)
-        synchronizer = VideoSynchronizer(config)
+        # Check if input is audio-only or video
+        file_info = file_handler.get_file_info(input_file)
         
-        # Generate output files for each speaker
-        output_files = []
-        for i, (speaker_id, audio_track) in enumerate(isolated_tracks.items()):
-            output_file = output_dir / f"{input_file.stem}_speaker_{i+1}.{format}"
+        if file_info and file_info.is_audio and not file_info.is_video:
+            # Audio-only processing - just copy the isolated tracks
+            click.echo("🎵 Processing audio-only file...")
+            output_files = []
+            for i, (_, audio_track) in enumerate(isolated_tracks.items()):
+                output_file = output_dir / f"{input_file.stem}_speaker_{i+1}.wav"
+                
+                if verbose:
+                    click.echo(f"Creating {output_file}")
+                
+                # Copy isolated audio track to output
+                file_handler.copy_file(audio_track, output_file)
+                output_files.append(output_file)
+        else:
+            # Step 3: Video Processing
+            click.echo("🎬 Processing video...")
+            video_processor = VideoProcessor(config)
+            synchronizer = VideoSynchronizer(config)
             
-            if verbose:
-                click.echo(f"Creating {output_file}")
-            
-            # Synchronize video with isolated audio
-            synchronized_video = synchronizer.sync_video_audio(
-                input_file, audio_track, output_file
-            )
-            
-            output_files.append(output_file)
+            # Generate output files for each speaker
+            output_files = []
+            for i, (_, audio_track) in enumerate(isolated_tracks.items()):
+                output_file = output_dir / f"{input_file.stem}_speaker_{i+1}.{format}"
+                
+                if verbose:
+                    click.echo(f"Creating {output_file}")
+                
+                # Synchronize video with isolated audio
+                synchronizer.sync_video_audio(
+                    input_file, audio_track, output_file
+                )
+                
+                output_files.append(output_file)
         
         # Success message
         click.echo("✅ Processing complete!")
