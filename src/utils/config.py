@@ -4,7 +4,7 @@ Handles application configuration and settings
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 import os
 
@@ -20,6 +20,9 @@ class Config:
     
     # Output format settings
     output_format: str = 'mp4'  # 'mp4', 'avi', 'mov'
+    
+    # Voice separation backend
+    backend: str = 'speechbrain'  # 'ffmpeg', 'speechbrain', 'demucs', 'spectral'
     
     # Logging and verbosity
     verbose: bool = False
@@ -64,6 +67,12 @@ class Config:
             raise ValueError(f"Invalid output format: {self.output_format}. "
                            f"Must be one of: {valid_formats}")
         
+        # Validate backend setting
+        valid_backends = ['ffmpeg', 'speechbrain', 'demucs', 'spectral']
+        if self.backend not in valid_backends:
+            raise ValueError(f"Invalid backend setting: {self.backend}. "
+                           f"Must be one of: {valid_backends}")
+        
         # Validate speaker range
         if self.min_speakers < 1:
             raise ValueError("min_speakers must be at least 1")
@@ -100,6 +109,7 @@ class Config:
         return cls(
             quality=os.getenv('DUOSYNCO_QUALITY', 'medium'),
             output_format=os.getenv('DUOSYNCO_FORMAT', 'mp4'),
+            backend=os.getenv('DUOSYNCO_BACKEND', 'speechbrain'),
             verbose=os.getenv('DUOSYNCO_VERBOSE', 'false').lower() == 'true',
             audio_sample_rate=int(os.getenv('DUOSYNCO_SAMPLE_RATE', '44100')),
             audio_channels=int(os.getenv('DUOSYNCO_CHANNELS', '2')),
@@ -206,6 +216,7 @@ class Config:
         print("⚙️  DuoSynco Configuration:")
         print(f"  Quality: {self.quality}")
         print(f"  Output Format: {self.output_format}")
+        print(f"  Backend: {self.backend}")
         print(f"  Audio: {self.audio_sample_rate}Hz, {self.audio_channels}ch, {self.audio_bitrate}")
         print(f"  Processing: {self.num_threads} thread(s), {self.memory_limit_mb}MB limit")
         print(f"  Temp Directory: {self.temp_dir}")
@@ -227,6 +238,69 @@ class Config:
         
         if self.verbose:
             print(f"💾 Configuration saved to: {file_path}")
+    
+    @staticmethod
+    def get_available_backends() -> Dict[str, bool]:
+        """
+        Check availability of voice separation backends
+        
+        Returns:
+            Dictionary mapping backend name to availability status
+        """
+        backends = {}
+        
+        # Check FFmpeg
+        try:
+            import subprocess
+            result = subprocess.run(['ffmpeg', '-version'], 
+                                  capture_output=True, text=True)
+            backends['ffmpeg'] = result.returncode == 0
+        except Exception:
+            backends['ffmpeg'] = False
+        
+        # Check SpeechBrain
+        try:
+            import speechbrain
+            try:
+                from speechbrain.inference import SepformerSeparation
+            except ImportError:
+                from speechbrain.pretrained import SepformerSeparation
+            backends['speechbrain'] = True
+        except ImportError:
+            backends['speechbrain'] = False
+        
+        # Check Demucs
+        try:
+            import demucs.separate
+            import demucs.pretrained
+            backends['demucs'] = True
+        except ImportError:
+            backends['demucs'] = False
+        
+        # Spectral is always available (uses basic libraries)
+        backends['spectral'] = True
+        
+        return backends
+    
+    @staticmethod
+    def get_valid_backends() -> List[str]:
+        """
+        Get list of valid backend names
+        
+        Returns:
+            List of valid backend names
+        """
+        return ['ffmpeg', 'speechbrain', 'demucs', 'spectral']
+    
+    def validate_backend_availability(self) -> bool:
+        """
+        Validate that the selected backend is available
+        
+        Returns:
+            True if backend is available, False otherwise
+        """
+        available_backends = self.get_available_backends()
+        return available_backends.get(self.backend, False)
     
     @classmethod
     def load_from_file(cls, file_path: Path) -> 'Config':

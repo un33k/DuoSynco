@@ -28,6 +28,17 @@ try:
 except ImportError:
     SPEECHBRAIN_AVAILABLE = False
 
+# Check for Spleeter CLI availability
+def check_spleeter_cli():
+    try:
+        import subprocess
+        result = subprocess.run(['spleeter', '--help'], capture_output=True, text=True)
+        return result.returncode == 0
+    except:
+        return False
+
+SPLEETER_CLI_AVAILABLE = check_spleeter_cli()
+
 try:
     import librosa
     import soundfile as sf
@@ -36,6 +47,7 @@ except ImportError:
     LIBROSA_AVAILABLE = False
 
 from ..utils.config import Config
+from .ffmpeg_separator import FFmpegVoiceSeparator
 
 
 class MLVoiceSeparator:
@@ -47,6 +59,7 @@ class MLVoiceSeparator:
         self.config = config
         self.model = None
         self.speechbrain_model = None
+        self.ffmpeg_separator = FFmpegVoiceSeparator(config)
         self._initialize_model()
     
     def _initialize_model(self) -> None:
@@ -97,68 +110,123 @@ class MLVoiceSeparator:
     
     def is_available(self) -> bool:
         """Check if ML separation is available"""
-        return (SPEECHBRAIN_AVAILABLE and self.speechbrain_model is not None) or \
+        return self.ffmpeg_separator.is_available() or \
+               (SPEECHBRAIN_AVAILABLE and self.speechbrain_model is not None) or \
                (DEMUCS_AVAILABLE and self.model is not None)
     
-    def separate_speakers_from_segments(self, 
-                                      input_file: Path,
-                                      speaker_segments: Dict[str, List[Tuple[float, float]]],
-                                      total_duration: float) -> Dict[str, Path]:
+    def separate_with_specific_backend(self,
+                                     input_file: Path,
+                                     speaker_segments: Dict[str, List[Tuple[float, float]]],
+                                     total_duration: float,
+                                     backend: str) -> Dict[str, Path]:
         """
-        Separate speakers using ML models for specific time segments
+        Separate speakers using a specific backend
         
         Args:
             input_file: Original audio file
             speaker_segments: Dict mapping speaker_id to list of (start, end) times
             total_duration: Total duration of audio
+            backend: Specific backend to use ('ffmpeg', 'speechbrain', 'demucs')
             
         Returns:
             Dict mapping speaker_id to separated audio file path
         """
-        if not self.is_available():
-            if self.config.verbose:
-                print("❌ ML separation not available")
-            return {}
+        if self.config.verbose:
+            print(f"🎛️  Using {backend} backend for voice separation...")
         
         try:
-            if self.config.verbose:
-                print("🤖 Starting ML-based voice separation...")
-            
-            # Create temporary directory for processing
-            temp_dir = Path(tempfile.gettempdir()) / "duosynco_ml"
-            temp_dir.mkdir(exist_ok=True)
-            
-            # Load full audio
-            if LIBROSA_AVAILABLE:
-                audio, sample_rate = librosa.load(str(input_file), sr=None)
+            if backend == 'ffmpeg':
+                return self._separate_with_ffmpeg(input_file, speaker_segments, total_duration)
+            elif backend == 'speechbrain':
+                return self._separate_with_speechbrain(input_file, speaker_segments, total_duration)
+            elif backend == 'demucs':
+                return self._separate_with_demucs(input_file, speaker_segments, total_duration)
             else:
-                # Fallback to basic loading
-                audio, sample_rate = self._load_audio_fallback(input_file)
-            
-            # Process each speaker
-            separated_tracks = {}
-            
-            for speaker_id, segments in speaker_segments.items():
                 if self.config.verbose:
-                    total_speaker_time = sum(end - start for start, end in segments)
-                    print(f"  🎤 Processing {speaker_id} ({len(segments)} segments, {total_speaker_time:.1f}s)")
+                    print(f"❌ Unknown ML backend: {backend}")
+                return {}
                 
-                separated_path = self._create_ml_separated_track(
-                    audio, sample_rate, segments, speaker_id, total_duration, temp_dir
-                )
-                
-                if separated_path:
-                    separated_tracks[speaker_id] = separated_path
-            
-            if self.config.verbose:
-                print(f"✅ ML separation completed: {len(separated_tracks)} tracks")
-            
-            return separated_tracks
-            
         except Exception as e:
             if self.config.verbose:
-                print(f"❌ ML separation failed: {e}")
+                print(f"❌ {backend} separation failed: {e}")
             return {}
+    
+    def _separate_with_ffmpeg(self,
+                             input_file: Path,
+                             speaker_segments: Dict[str, List[Tuple[float, float]]],
+                             total_duration: float) -> Dict[str, Path]:
+        """Separate using FFmpeg backend"""
+        if not self.ffmpeg_separator.is_available():
+            if self.config.verbose:
+                print("❌ FFmpeg backend not available")
+            return {}
+        
+        return self.ffmpeg_separator.separate_speakers_from_segments(
+            input_file, speaker_segments, total_duration
+        )
+    
+    def _separate_with_speechbrain(self,
+                                  input_file: Path,
+                                  speaker_segments: Dict[str, List[Tuple[float, float]]],
+                                  total_duration: float) -> Dict[str, Path]:
+        """Separate using SpeechBrain backend"""
+        if not SPEECHBRAIN_AVAILABLE or self.speechbrain_model is None:
+            if self.config.verbose:
+                print("❌ SpeechBrain backend not available")
+            return {}
+        
+        return self._ml_separate_with_model(input_file, speaker_segments, total_duration, 'speechbrain')
+    
+    def _separate_with_demucs(self,
+                             input_file: Path,
+                             speaker_segments: Dict[str, List[Tuple[float, float]]],
+                             total_duration: float) -> Dict[str, Path]:
+        """Separate using Demucs backend"""
+        if not DEMUCS_AVAILABLE or self.model is None:
+            if self.config.verbose:
+                print("❌ Demucs backend not available")
+            return {}
+        
+        return self._ml_separate_with_model(input_file, speaker_segments, total_duration, 'demucs')
+    
+    def _ml_separate_with_model(self,
+                               input_file: Path,
+                               speaker_segments: Dict[str, List[Tuple[float, float]]],
+                               total_duration: float,
+                               model_type: str) -> Dict[str, Path]:
+        """
+        Generic ML separation using the specified model type
+        """
+        # Create temporary directory for processing
+        temp_dir = Path(tempfile.gettempdir()) / "duosynco_ml"
+        temp_dir.mkdir(exist_ok=True)
+        
+        # Load full audio
+        if LIBROSA_AVAILABLE:
+            audio, sample_rate = librosa.load(str(input_file), sr=None)
+        else:
+            # Fallback to basic loading
+            audio, sample_rate = self._load_audio_fallback(input_file)
+        
+        # Process each speaker
+        separated_tracks = {}
+        
+        for speaker_id, segments in speaker_segments.items():
+            if self.config.verbose:
+                total_speaker_time = sum(end - start for start, end in segments)
+                print(f"  🎤 Processing {speaker_id} ({len(segments)} segments, {total_speaker_time:.1f}s)")
+            
+            separated_path = self._create_ml_separated_track(
+                audio, sample_rate, segments, speaker_id, total_duration, temp_dir, model_type
+            )
+            
+            if separated_path:
+                separated_tracks[speaker_id] = separated_path
+        
+        if self.config.verbose:
+            print(f"✅ {model_type.title()} separation completed: {len(separated_tracks)} tracks")
+        
+        return separated_tracks
     
     def _create_ml_separated_track(self,
                                  full_audio: np.ndarray,
@@ -166,7 +234,8 @@ class MLVoiceSeparator:
                                  speaker_segments: List[Tuple[float, float]],
                                  speaker_id: str,
                                  total_duration: float,
-                                 temp_dir: Path) -> Optional[Path]:
+                                 temp_dir: Path,
+                                 model_type: str = 'auto') -> Optional[Path]:
         """
         Create separated track for one speaker using ML
         """
@@ -196,7 +265,7 @@ class MLVoiceSeparator:
                     
                     # Apply ML separation to this segment
                     separated_segment = self._separate_segment_with_ml(
-                        segment_audio, sample_rate, speaker_id
+                        segment_audio, sample_rate, speaker_id, model_type
                     )
                     
                     # Place in full track
@@ -227,7 +296,8 @@ class MLVoiceSeparator:
     def _separate_segment_with_ml(self,
                                 segment_audio: np.ndarray,
                                 sample_rate: int,
-                                speaker_id: str) -> Optional[np.ndarray]:
+                                speaker_id: str,
+                                model_type: str = 'auto') -> Optional[np.ndarray]:
         """
         Apply ML separation to a single audio segment
         """
@@ -238,26 +308,29 @@ class MLVoiceSeparator:
                 # Too short for ML processing, return original
                 return segment_audio
             
-            # Try SpeechBrain first (better for speech separation)
-            if self.speechbrain_model is not None:
-                return self._separate_with_speechbrain(segment_audio, sample_rate, speaker_id)
+            # Use the specified model type
+            if model_type == 'speechbrain' and self.speechbrain_model is not None:
+                return self._separate_with_speechbrain_segment(segment_audio, sample_rate, speaker_id)
+            elif model_type == 'demucs' and self.model is not None:
+                return self._separate_with_demucs_segment(segment_audio, sample_rate, speaker_id)
+            elif model_type == 'auto':
+                # Auto selection for backward compatibility
+                if self.speechbrain_model is not None:
+                    return self._separate_with_speechbrain_segment(segment_audio, sample_rate, speaker_id)
+                elif self.model is not None:
+                    return self._separate_with_demucs_segment(segment_audio, sample_rate, speaker_id)
             
-            # Fallback to Demucs
-            elif self.model is not None:
-                return self._separate_with_demucs(segment_audio, sample_rate, speaker_id)
-            
-            else:
-                return segment_audio
+            return segment_audio
             
         except Exception as e:
             if self.config.verbose:
                 print(f"⚠️  ML segment separation failed: {e}, using original")
             return segment_audio
     
-    def _separate_with_speechbrain(self, 
-                                 segment_audio: np.ndarray,
-                                 sample_rate: int,
-                                 speaker_id: str) -> np.ndarray:
+    def _separate_with_speechbrain_segment(self, 
+                                         segment_audio: np.ndarray,
+                                         sample_rate: int,
+                                         speaker_id: str) -> np.ndarray:
         """
         Separate using SpeechBrain SepFormer model
         """
@@ -294,10 +367,10 @@ class MLVoiceSeparator:
                 print(f"⚠️  SpeechBrain separation failed: {e}")
             return segment_audio
     
-    def _separate_with_demucs(self, 
-                            segment_audio: np.ndarray,
-                            sample_rate: int,
-                            speaker_id: str) -> np.ndarray:
+    def _separate_with_demucs_segment(self, 
+                                    segment_audio: np.ndarray,
+                                    sample_rate: int,
+                                    speaker_id: str) -> np.ndarray:
         """
         Separate using Demucs (fallback method)
         """

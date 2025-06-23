@@ -39,7 +39,7 @@ class VoiceIsolator:
                         input_file: Path, 
                         speaker_segments: List[SpeakerSegment]) -> Dict[str, Path]:
         """
-        Create isolated audio tracks for each speaker using ML or spectral separation
+        Create isolated audio tracks for each speaker using the configured backend
         
         Args:
             input_file: Original audio/video file
@@ -60,30 +60,57 @@ class VoiceIsolator:
         # Group segments by speaker
         speaker_timeline = self._group_segments_by_speaker(speaker_segments)
         
-        # Try ML-based separation first
-        if self.ml_separator.is_available():
-            if self.config.verbose:
-                print(f"🤖 Using ML-based voice separation for {total_duration:.1f}s audio")
-            
-            isolated_tracks = self.ml_separator.separate_speakers_from_segments(
-                input_file, speaker_timeline, total_duration
-            )
-            
-            # Verify tracks were created successfully
-            if isolated_tracks:
-                for speaker_id, track_path in isolated_tracks.items():
-                    if self.config.verbose:
-                        self._verify_track_length(track_path, total_duration)
-                
-                if self.config.verbose:
-                    print(f"✅ Created {len(isolated_tracks)} ML-separated tracks")
-                return isolated_tracks
-        
-        # Fallback to spectral separation
         if self.config.verbose:
-            print(f"🎵 Using spectral voice separation for {total_duration:.1f}s audio")
+            print(f"🎛️  Using {self.config.backend} backend for {total_duration:.1f}s audio")
         
-        return self._fallback_spectral_separation(input_file, speaker_timeline, total_duration)
+        # Use the selected backend directly
+        isolated_tracks = self._separate_with_backend(
+            input_file, speaker_timeline, total_duration
+        )
+        
+        # Verify tracks were created successfully
+        if isolated_tracks:
+            for speaker_id, track_path in isolated_tracks.items():
+                if self.config.verbose:
+                    self._verify_track_length(track_path, total_duration)
+            
+            if self.config.verbose:
+                print(f"✅ Created {len(isolated_tracks)} {self.config.backend}-separated tracks")
+        else:
+            if self.config.verbose:
+                print(f"❌ No tracks created with {self.config.backend} backend")
+        
+        return isolated_tracks
+    
+    def _separate_with_backend(self,
+                              input_file: Path,
+                              speaker_timeline: Dict[str, List[Tuple[float, float]]],
+                              total_duration: float) -> Dict[str, Path]:
+        """
+        Separate speakers using the specified backend
+        
+        Args:
+            input_file: Original audio/video file
+            speaker_timeline: Dict mapping speaker_id to list of (start, end) times
+            total_duration: Total duration of audio
+            
+        Returns:
+            Dict mapping speaker_id to separated audio file path
+        """
+        backend = self.config.backend
+        
+        if backend in ['speechbrain', 'demucs', 'ffmpeg']:
+            # Use ML separator for these backends
+            return self.ml_separator.separate_with_specific_backend(
+                input_file, speaker_timeline, total_duration, backend
+            )
+        elif backend == 'spectral':
+            # Use spectral separation
+            return self._fallback_spectral_separation(input_file, speaker_timeline, total_duration)
+        else:
+            if self.config.verbose:
+                print(f"❌ Unknown backend: {backend}")
+            return {}
     
     def _verify_track_length(self, track_path: Path, expected_duration: float) -> None:
         """

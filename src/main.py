@@ -19,7 +19,7 @@ from .video.synchronizer import VideoSynchronizer
 
 
 @click.command()
-@click.argument('input_file', type=click.Path(exists=True, path_type=Path))
+@click.argument('input_file', type=click.Path(path_type=Path), required=False)
 @click.option('--output-dir', '-o', 
               type=click.Path(path_type=Path),
               default='./output',
@@ -36,14 +36,23 @@ from .video.synchronizer import VideoSynchronizer
               type=click.Choice(['low', 'medium', 'high']),
               default='medium',
               help='Processing quality level')
+@click.option('--backend', '-b',
+              type=click.Choice(['ffmpeg', 'speechbrain', 'demucs', 'spectral']),
+              default='speechbrain',
+              help='Voice separation backend (default: speechbrain)')
+@click.option('--list-backends',
+              is_flag=True,
+              help='List available backends and exit')
 @click.option('--verbose', '-v',
               is_flag=True,
               help='Enable verbose output')
-def cli(input_file: Path, 
+def cli(input_file: Optional[Path], 
         output_dir: Path, 
         speakers: int, 
         format: str, 
         quality: str, 
+        backend: str,
+        list_backends: bool,
         verbose: bool):
     """
     DuoSynco - Sync two videos with isolated audio tracks
@@ -55,12 +64,42 @@ def cli(input_file: Path,
     INPUT_FILE: Path to the input video file to process
     """
     
+    # Handle list-backends option
+    if list_backends:
+        available_backends = Config.get_available_backends()
+        click.echo("🔧 Available Voice Separation Backends:")
+        for backend_name, is_available in available_backends.items():
+            status = "✅ Available" if is_available else "❌ Not Available"
+            click.echo(f"  {backend_name}: {status}")
+        return
+    
+    # Validate input file is provided for normal operations
+    if input_file is None:
+        click.echo("❌ Error: INPUT_FILE is required.", err=True)
+        click.echo("Use --help for usage information.", err=True)
+        sys.exit(1)
+    
+    # Check if input file exists
+    if not input_file.exists():
+        click.echo(f"❌ Error: Input file '{input_file}' does not exist.", err=True)
+        sys.exit(1)
+    
     # Configure logging
     if verbose:
         click.echo("Verbose mode enabled")
     
     # Initialize components
-    config = Config(quality=quality, output_format=format, verbose=verbose)
+    config = Config(quality=quality, output_format=format, backend=backend, verbose=verbose)
+    
+    # Validate backend availability
+    if not config.validate_backend_availability():
+        available_backends = Config.get_available_backends()
+        available_list = [name for name, avail in available_backends.items() if avail]
+        click.echo(f"❌ Error: Backend '{backend}' is not available.", err=True)
+        click.echo(f"Available backends: {', '.join(available_list)}", err=True)
+        click.echo("Use --list-backends to see detailed availability.", err=True)
+        sys.exit(1)
+    
     file_handler = FileHandler(config)
     
     try:
@@ -76,6 +115,7 @@ def cli(input_file: Path,
             click.echo(f"Processing {input_file}")
             click.echo(f"Output directory: {output_dir}")
             click.echo(f"Expected speakers: {speakers}")
+            click.echo(f"Using backend: {backend}")
         
         # Step 1: Speaker Diarization
         click.echo("🔍 Analyzing speakers...")

@@ -16,6 +16,7 @@ NC='\033[0m'
 SPEAKERS=2
 OUTPUT_DIR="./output"
 QUALITY="medium"
+BACKEND="speechbrain"
 VERBOSE=false
 
 # Print colored message
@@ -38,13 +39,16 @@ show_usage() {
     echo "  -s, --speakers N     Number of speakers to separate (default: 2)"
     echo "  -o, --output-dir DIR Output directory (default: ./output)"
     echo "  -q, --quality LEVEL  Quality: low, medium, high (default: medium)"
+    echo "  -b, --backend NAME   Backend: ffmpeg, speechbrain, demucs, spectral (default: speechbrain)"
     echo "  -v, --verbose        Enable verbose output"
+    echo "  --list-backends      List available backends and exit"
     echo "  -h, --help           Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0 sample_data/annunaki.mp3"
     echo "  $0 interview.wav -s 3 -o results -v"
-    echo "  $0 podcast.mp3 --speakers 2 --quality high"
+    echo "  $0 podcast.mp3 --speakers 2 --quality high --backend demucs"
+    echo "  $0 --list-backends"
 }
 
 # Parse arguments
@@ -52,6 +56,13 @@ parse_args() {
     if [ $# -eq 0 ]; then
         show_usage
         exit 1
+    fi
+
+    # Check for --list-backends first (doesn't need input file)
+    if [ "$1" = "--list-backends" ]; then
+        cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")"
+        ./scripts/run.sh --list-backends
+        exit 0
     fi
 
     INPUT_FILE="$1"
@@ -70,6 +81,16 @@ parse_args() {
             -q|--quality)
                 QUALITY="$2"
                 shift 2
+                ;;
+            -b|--backend)
+                BACKEND="$2"
+                shift 2
+                ;;
+            --list-backends)
+                # Pass through to main script
+                cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")"
+                ./scripts/run.sh --list-backends
+                exit 0
                 ;;
             -v|--verbose)
                 VERBOSE=true
@@ -148,6 +169,7 @@ main() {
         echo "  Output directory: $OUTPUT_DIR"
         echo "  Expected speakers: $SPEAKERS"
         echo "  Quality: $QUALITY"
+        echo "  Backend: $BACKEND"
     fi
     
     # Change to project root
@@ -158,6 +180,7 @@ main() {
     ARGS+=("--output-dir" "$OUTPUT_DIR")
     ARGS+=("--speakers" "$SPEAKERS")
     ARGS+=("--quality" "$QUALITY")
+    ARGS+=("--backend" "$BACKEND")
     
     if [ "$VERBOSE" = true ]; then
         ARGS+=("--verbose")
