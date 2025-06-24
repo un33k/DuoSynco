@@ -5,6 +5,7 @@ Provider factory for speaker diarization services
 from typing import Optional
 from .base import SpeakerDiarizationProvider
 from .assemblyai import AssemblyAIDiarizer
+from .elevenlabs import ElevenLabsTTSProvider
 
 
 class ProviderFactory:
@@ -12,7 +13,7 @@ class ProviderFactory:
 
     AVAILABLE_PROVIDERS = {
         'assemblyai': AssemblyAIDiarizer,
-        # 'elevenlabs': ElevenLabsDiarizer,  # Future implementation
+        'elevenlabs': ElevenLabsTTSProvider,
     }
 
     @classmethod

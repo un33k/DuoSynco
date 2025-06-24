@@ -40,6 +40,12 @@ class Config:
     min_speakers: int = 1
     max_speakers: int = 10
     
+    # TTS generation settings
+    tts_provider: str = 'elevenlabs'  # 'elevenlabs'
+    tts_voice_stability: float = 0.5  # 0.0-1.0
+    tts_voice_similarity: float = 0.7  # 0.0-1.0  
+    tts_max_workers: int = 3  # Concurrent TTS requests
+    
     # File handling settings
     temp_dir: Optional[Path] = None
     cleanup_temp_files: bool = True
@@ -88,6 +94,14 @@ class Config:
             raise ValueError("num_threads must be at least 1")
         if self.memory_limit_mb < 256:
             raise ValueError("memory_limit_mb must be at least 256")
+            
+        # Validate TTS settings
+        if not 0.0 <= self.tts_voice_stability <= 1.0:
+            raise ValueError("tts_voice_stability must be between 0.0 and 1.0")
+        if not 0.0 <= self.tts_voice_similarity <= 1.0:
+            raise ValueError("tts_voice_similarity must be between 0.0 and 1.0")
+        if self.tts_max_workers < 1:
+            raise ValueError("tts_max_workers must be at least 1")
     
     def _setup_temp_directory(self) -> None:
         """Setup temporary directory for processing"""

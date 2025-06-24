@@ -6,7 +6,7 @@ Main CLI entry point for processing videos with speaker isolation using Assembly
 
 import click
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict
 import sys
 import logging
 
@@ -54,6 +54,30 @@ from .video.synchronizer import VideoSynchronizer
 @click.option('--verbose', '-v',
               is_flag=True,
               help='Enable verbose output')
+@click.option('--mode',
+              type=click.Choice(['diarization', 'tts']),
+              default='diarization',
+              help='Processing mode: diarization (default) or tts generation')
+@click.option('--transcript-file',
+              type=click.Path(path_type=Path),
+              help='Transcript file for TTS mode (JSON or TXT format)')
+@click.option('--total-duration',
+              type=float,
+              help='Total duration in seconds for TTS mode')
+@click.option('--voice-mapping',
+              type=str,
+              help='Voice mapping as JSON string (e.g., \'{"A": "voice-id", "B": "voice-id"}\')')
+@click.option('--tts-workers',
+              type=int,
+              default=3,
+              help='Number of concurrent TTS workers (default: 3)')
+@click.option('--list-voices',
+              is_flag=True,
+              help='List available TTS voices and exit')
+@click.option('--tts-quality',
+              type=click.Choice(['low', 'medium', 'high', 'ultra']),
+              default='high',
+              help='TTS quality level (default: high)')
 def cli(input_file: Optional[Path],
         output_dir: Path,
         speakers: int,
@@ -64,7 +88,14 @@ def cli(input_file: Optional[Path],
         provider: str,
         api_key: Optional[str],
         list_providers: bool,
-        verbose: bool):
+        verbose: bool,
+        mode: str,
+        transcript_file: Optional[Path],
+        total_duration: Optional[float],
+        voice_mapping: Optional[str],
+        tts_workers: int,
+        list_voices: bool,
+        tts_quality: str):
     """
     DuoSynco - Sync videos with isolated speaker audio tracks
 
@@ -95,9 +126,45 @@ def cli(input_file: Optional[Path],
                 click.echo(f"    Error: {info['error']}")
         return
 
-    # Validate input file is provided
+    # Handle list-voices option
+    if list_voices:
+        from .audio.tts_generator import TTSAudioGenerator
+        try:
+            tts_generator = TTSAudioGenerator(provider='elevenlabs', api_key=api_key)
+            voices_info = tts_generator.list_available_voices()
+            
+            click.echo("🗣️  Available ElevenLabs Voices:")
+            if voices_info['total_voices'] > 0:
+                for voice in voices_info['available_voices'][:10]:  # Show first 10
+                    name = voice.get('name', 'Unknown')
+                    voice_id = voice.get('voice_id', 'Unknown')
+                    gender = voice.get('labels', {}).get('gender', 'Unknown')
+                    click.echo(f"  {name} ({gender}): {voice_id}")
+                
+                if voices_info['total_voices'] > 10:
+                    click.echo(f"  ... and {voices_info['total_voices'] - 10} more voices")
+                    
+                click.echo("\n🎯 Default Voice Mapping:")
+                for voice_id, info in voices_info['default_voices'].items():
+                    name = info.get('name', 'Unknown')
+                    click.echo(f"  {name}: {voice_id}")
+            else:
+                click.echo("  No voices available or API key invalid")
+                
+        except Exception as e:
+            click.echo(f"❌ Error retrieving voices: {e}", err=True)
+        return
+
+    # Handle TTS mode
+    if mode == 'tts':
+        return handle_tts_mode(
+            transcript_file, total_duration, output_dir, api_key,
+            voice_mapping, tts_workers, tts_quality, verbose
+        )
+
+    # Validate input file is provided for diarization mode
     if input_file is None:
-        click.echo("❌ Error: INPUT_FILE is required.", err=True)
+        click.echo("❌ Error: INPUT_FILE is required for diarization mode.", err=True)
         click.echo("Use --help for usage information.", err=True)
         sys.exit(1)
 
@@ -223,6 +290,168 @@ def cli(input_file: Optional[Path],
             import traceback
             traceback.print_exc()
         sys.exit(1)
+
+
+def handle_tts_mode(
+    transcript_file: Optional[Path],
+    total_duration: Optional[float],
+    output_dir: Path,
+    api_key: Optional[str],
+    voice_mapping: Optional[str],
+    tts_workers: int,
+    tts_quality: str,
+    verbose: bool
+) -> None:
+    """Handle TTS generation mode"""
+    import json
+    
+    # Validate required parameters for TTS mode
+    if transcript_file is None:
+        click.echo("❌ Error: --transcript-file is required for TTS mode.", err=True)
+        sys.exit(1)
+        
+    if total_duration is None:
+        click.echo("❌ Error: --total-duration is required for TTS mode.", err=True)
+        sys.exit(1)
+        
+    if not transcript_file.exists():
+        click.echo(f"❌ Error: Transcript file '{transcript_file}' does not exist.", err=True)
+        sys.exit(1)
+        
+    # Parse voice mapping if provided
+    parsed_voice_mapping = None
+    if voice_mapping:
+        try:
+            parsed_voice_mapping = json.loads(voice_mapping)
+        except json.JSONDecodeError as e:
+            click.echo(f"❌ Error: Invalid voice mapping JSON: {e}", err=True)
+            sys.exit(1)
+    
+    try:
+        # Load transcript segments
+        transcript_segments = load_transcript_file(transcript_file)
+        
+        if verbose:
+            click.echo(f"📄 Loaded {len(transcript_segments)} transcript segments")
+            click.echo(f"⏱️  Total duration: {total_duration}s")
+            click.echo(f"🎯 TTS quality: {tts_quality}")
+            if parsed_voice_mapping:
+                click.echo(f"🗣️  Voice mapping: {parsed_voice_mapping}")
+        
+        # Initialize TTS generator
+        from .audio.tts_generator import TTSAudioGenerator
+        tts_generator = TTSAudioGenerator(provider='elevenlabs', api_key=api_key)
+        
+        # Create output directory
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generate audio tracks
+        click.echo(f"🗣️  Generating {tts_quality} quality TTS audio tracks...")
+        result = tts_generator.generate_audio_tracks(
+            transcript_segments=transcript_segments,
+            total_duration=total_duration,
+            output_dir=str(output_dir),
+            base_filename=transcript_file.stem,
+            voice_mapping=parsed_voice_mapping,
+            max_workers=tts_workers,
+            quality=tts_quality
+        )
+        
+        # Display results
+        stats = result['stats']
+        click.echo("✅ TTS generation completed!")
+        click.echo(f"📊 Generated {len(result['audio_files'])} audio tracks")
+        click.echo(f"👥 Speakers: {', '.join(result['speakers'])}")
+        click.echo(f"📝 Total segments: {stats['total_segments']}")
+        click.echo(f"⏱️  Total speech duration: {stats['total_speech_duration']:.1f}s")
+        click.echo(f"🔤 Total characters: {stats['total_characters']}")
+        
+        click.echo("\n🎵 Generated audio files:")
+        for audio_file in result['audio_files']:
+            click.echo(f"  - {audio_file}")
+            
+        click.echo(f"\n🗣️  Voice mapping used:")
+        for speaker, voice_id in result['voice_mapping'].items():
+            click.echo(f"  {speaker}: {voice_id}")
+            
+    except Exception as e:
+        click.echo(f"❌ Error in TTS generation: {str(e)}", err=True)
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
+def load_transcript_file(file_path: Path) -> List[Dict]:
+    """Load transcript segments from file"""
+    import json
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read().strip()
+            
+        # Try to parse as JSON first
+        try:
+            data = json.loads(content)
+            
+            # Handle different JSON formats
+            if isinstance(data, list):
+                # Direct list of segments
+                return data
+            elif isinstance(data, dict):
+                # Check for common keys
+                if 'segments' in data:
+                    return data['segments']
+                elif 'utterances' in data:
+                    return data['utterances']
+                else:
+                    # Assume it's a single segment
+                    return [data]
+            else:
+                raise ValueError("Unsupported JSON format")
+                
+        except json.JSONDecodeError:
+            # Try to parse as simple text format
+            # Format: "SPEAKER_ID (start-end): text"
+            segments = []
+            lines = content.split('\n')
+            
+            for line in lines:
+                line = line.strip()
+                if not line or line.startswith('='):
+                    continue
+                    
+                # Parse format: "A (1.23s-5.67s): Hello world"
+                if ':' in line and '(' in line and ')' in line:
+                    parts = line.split(':', 1)
+                    if len(parts) == 2:
+                        speaker_part = parts[0].strip()
+                        text = parts[1].strip()
+                        
+                        # Extract speaker and timing
+                        if '(' in speaker_part and ')' in speaker_part:
+                            speaker = speaker_part.split('(')[0].strip()
+                            timing_part = speaker_part.split('(')[1].split(')')[0]
+                            
+                            if '-' in timing_part:
+                                start_str, end_str = timing_part.split('-')
+                                start = float(start_str.replace('s', ''))
+                                end = float(end_str.replace('s', ''))
+                                
+                                segments.append({
+                                    'speaker': speaker,
+                                    'start': start,
+                                    'end': end,
+                                    'text': text
+                                })
+            
+            if segments:
+                return segments
+            else:
+                raise ValueError("Could not parse transcript file format")
+                
+    except Exception as e:
+        raise ValueError(f"Failed to load transcript file: {e}")
 
 
 if __name__ == '__main__':
