@@ -135,6 +135,9 @@ from .video.video_sync import VideoSynchronizer
 @click.option('--create-sample-profiles', '-csp',
               is_flag=True,
               help='Create sample character profiles for testing')
+@click.option('--model-id', '-mid',
+              type=str,
+              help='TTS model ID to use (e.g., eleven_flash_v2_5, eleven_v3, eleven_multilingual_v2)')
 @click.option('--clone-voices', '-cv',
               is_flag=True,
               help='Enable voice cloning from original audio samples (preserves accents/characteristics)')
@@ -173,6 +176,7 @@ def cli(input_file: Optional[Path],
         dialogue_quality: str,
         use_dialogue_api: bool,
         create_sample_profiles: bool,
+        model_id: Optional[str],
         clone_voices: bool):
     """
     DuoSynco - Sync videos with isolated speaker audio tracks
@@ -268,7 +272,7 @@ def cli(input_file: Optional[Path],
         
         return handle_tts_mode(
             input_file, total_duration, output_dir, api_key,
-            voice_mapping, tts_workers, tts_quality, timing_mode, gap_duration, verbose, clone_voices
+            voice_mapping, tts_workers, tts_quality, timing_mode, gap_duration, verbose, clone_voices, model_id
         )
     
     # Handle Edit mode
@@ -630,7 +634,8 @@ def handle_tts_mode(
     timing_mode: str,
     gap_duration: float,
     verbose: bool,
-    clone_voices: bool
+    clone_voices: bool,
+    model_id: Optional[str]
 ) -> None:
     """Handle TTS generation mode"""
     import json
@@ -740,6 +745,12 @@ def handle_tts_mode(
         # Create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
         
+        # Prepare TTS settings
+        tts_settings = {}
+        if model_id:
+            tts_settings['model_id'] = model_id
+            click.echo(f"🤖 Using TTS model: {model_id}")
+        
         # Generate audio tracks
         click.echo(f"🗣️  Generating {tts_quality} quality TTS audio tracks ({timing_mode} timing)...")
         result = tts_generator.generate_audio_tracks(
@@ -748,6 +759,7 @@ def handle_tts_mode(
             output_dir=str(output_dir),
             base_filename=transcript_file.stem,
             voice_mapping=parsed_voice_mapping,
+            tts_settings=tts_settings if tts_settings else None,
             max_workers=tts_workers,
             quality=tts_quality,
             timing_mode=timing_mode,

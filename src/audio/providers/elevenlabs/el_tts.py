@@ -161,15 +161,28 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
         }
         
         try:
+            # Log the full API call details in verbose mode
+            logger.info("🔗 ElevenLabs TTS API Call:")
+            logger.info("   URL: %s", url)
+            logger.info("   Model: %s", model_id)
+            logger.info("   Voice: %s", voice_id)
+            logger.info("   Text: '%.100s%s'", text[:100], "..." if len(text) > 100 else "")
+            logger.debug("   Headers: %s", dict(self.session.headers))
+            logger.debug("   Payload: %s", payload)
+            
             response = self.session.post(url, json=payload, timeout=60)
             response.raise_for_status()
             
+            logger.info("✅ TTS generated successfully (%.1f KB)", len(response.content) / 1024)
             logger.debug("Generated TTS for text: '%.50s...' (voice: %s)", 
                         text[:50], voice_id)
             return response.content
             
         except requests.exceptions.RequestException as e:
-            logger.error("TTS generation failed for voice %s: %s", voice_id, e)
+            logger.error("❌ TTS generation failed for voice %s: %s", voice_id, e)
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error("   Response status: %s", e.response.status_code)
+                logger.error("   Response body: %s", e.response.text[:500])
             raise RuntimeError(f"TTS generation failed: {e}")
     
     def measure_tts_duration(

@@ -55,7 +55,8 @@ class AliConfig:
             'mode': 'tts',
             'tts_quality': 'high',
             'timing_mode': 'adaptive',
-            'gap_duration': '0.4'
+            'gap_duration': '0.4',
+            'model_id': 'eleven_multilingual_v2'
         }
     
     @property

@@ -108,7 +108,14 @@ class AliCommands:
             '--language', self.config.defaults['language'],
             '--voice-mapping', self.config.defaults['voice_mapping'],
             '--tts-quality', self.config.defaults.get('tts_quality', 'high')
-        ] + self._get_common_args()
+        ]
+        
+        # Add model_id if specified and different from default
+        if (self.config.defaults.get('model_id') and 
+            self.config.defaults['model_id'] != 'eleven_multilingual_v2'):
+            args.extend(['--model-id', self.config.defaults['model_id']])
+        
+        args += self._get_common_args()
         
         return self._run_duosynco(args)
     
@@ -144,7 +151,14 @@ class AliCommands:
             '--language', self.config.defaults['language'],
             '--tts-quality', self.config.defaults.get('tts_quality', 'high'),
             '--clone-voices'
-        ] + self._get_common_args()
+        ]
+        
+        # Add model_id if specified and different from default
+        if (self.config.defaults.get('model_id') and 
+            self.config.defaults['model_id'] != 'eleven_multilingual_v2'):
+            args.extend(['--model-id', self.config.defaults['model_id']])
+        
+        args += self._get_common_args()
         
         return self._run_duosynco(args)
     

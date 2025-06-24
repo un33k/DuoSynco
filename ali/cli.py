@@ -28,12 +28,15 @@ def show_help():
     print("  -l, --language LANG              # Language code (default: fa)")
     print("  -o, --output-dir DIR             # Output directory (default: ./output)")
     print("  -q, --quality QUALITY            # Quality: low, medium, high (default: high)")
+    print("  -m, --model MODEL                # Model ID (e.g., eleven_flash_v2_5, eleven_v3)")
     print("  -v, --verbose                    # Enable verbose output")
     print("  --no-verbose                     # Disable verbose output")
     print("")
     print("Examples:")
     print("  ali stt sample_data/annunaki-fa.mp3")
-    print("  ali tts output/transcript.json -p assemblyai -l en")
+    print("  ali tts output/transcript.json -p elevenlabs -l en")
+    print("  ali tts output/transcript.json -m eleven_flash_v2_5")
+    print("  ali tts output/transcript.json -m eleven_v3  # Alpha access required")
     print("  ali clone output/transcript.json --quality medium")
     print("")
 
@@ -59,6 +62,7 @@ def create_parser() -> argparse.ArgumentParser:
         subparser.add_argument('-o', '--output-dir', help='Output directory (default: ./output)')
         subparser.add_argument('-q', '--quality', choices=['low', 'medium', 'high', 'ultra'],
                              help='Quality level (default: high)')
+        subparser.add_argument('-m', '--model', help='Model ID (e.g., eleven_flash_v2_5, eleven_v3)')
         subparser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
         subparser.add_argument('--no-verbose', action='store_true', help='Disable verbose output')
     
@@ -134,6 +138,8 @@ def main(args: List[str]):
             config.defaults['output_dir'] = parsed_args.output_dir
         if hasattr(parsed_args, 'quality') and parsed_args.quality:
             config.defaults['tts_quality'] = parsed_args.quality
+        if hasattr(parsed_args, 'model') and parsed_args.model:
+            config.defaults['model_id'] = parsed_args.model
         if hasattr(parsed_args, 'verbose') and parsed_args.verbose:
             config.defaults['verbose'] = True
         if hasattr(parsed_args, 'no_verbose') and parsed_args.no_verbose:
