@@ -158,7 +158,6 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         data = {
             "audio_url": audio_url,
             "speaker_labels": True,
-            "speakers_expected": speakers_expected,
             "punctuate": True,
             "format_text": True,
             # Enhanced quality settings
@@ -166,13 +165,52 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
             "language_detection": True,
             "disfluencies": True,
             "sentiment_analysis": True,
-            "auto_highlights": True
+            "auto_highlights": True,
+            # Advanced speaker detection
+            "speaker_options": {
+                "min_speakers_expected": max(1, speakers_expected - 1),
+                "max_speakers_expected": min(10, speakers_expected + 2)
+            },
+            # Domain-specific boosting for conversation accuracy
+            "word_boost": [
+                "yeah", "okay", "right", "exactly", "absolutely", "well",
+                "um", "uh", "like", "you know", "I mean", "sort of",
+                "speaker", "person", "voice", "conversation", "dialogue",
+                "Anunnaki", "Mesopotamia", "Sumerian", "Babylonian", "Assyrian"
+            ],
+            "boost_param": "high",
+            # Custom spelling for proper nouns and technical terms
+            "custom_spelling": [
+                {"from": "anunaki", "to": "Anunnaki"},
+                {"from": "mesopotamia", "to": "Mesopotamia"},
+                {"from": "sumerian", "to": "Sumerian"},
+                {"from": "babylonian", "to": "Babylonian"},
+                {"from": "assyrian", "to": "Assyrian"},
+                {"from": "enlil", "to": "Enlil"},
+                {"from": "enki", "to": "Enki"},
+                {"from": "inanna", "to": "Inanna"},
+                {"from": "ishtar", "to": "Ishtar"}
+            ]
         }
         
         # Use language_code OR language_detection, not both
         if language and language != "auto":
             data["language_code"] = language
             del data["language_detection"]
+            
+            # Disable features not available for non-English languages
+            if language != "en":
+                logger.info("Disabling advanced features for non-English language: %s", language)
+                # Keep only basic features supported by all languages
+                features_to_remove = ["sentiment_analysis", "auto_highlights", "disfluencies"]
+                if language not in ["en", "es", "fr", "de"]:  # Languages that support speaker_labels
+                    features_to_remove.extend(["speaker_labels", "speaker_options"])
+                    logger.warning("Speaker diarization may not be supported for language: %s", language)
+                
+                for feature in features_to_remove:
+                    if feature in data:
+                        del data[feature]
+                        logger.debug("Removed unsupported feature: %s", feature)
 
         try:
             response = self.session.post(
