@@ -159,10 +159,20 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
             "audio_url": audio_url,
             "speaker_labels": True,
             "speakers_expected": speakers_expected,
-            "language_code": language,
             "punctuate": True,
-            "format_text": True
+            "format_text": True,
+            # Enhanced quality settings
+            "speech_model": "best",
+            "language_detection": True,
+            "disfluencies": True,
+            "sentiment_analysis": True,
+            "auto_highlights": True
         }
+        
+        # Use language_code OR language_detection, not both
+        if language and language != "auto":
+            data["language_code"] = language
+            del data["language_detection"]
 
         try:
             response = self.session.post(
@@ -179,6 +189,11 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
             logger.info("Transcription submitted with ID: %s", transcript_id)
             return transcript_id
 
+        except requests.exceptions.HTTPError as e:
+            # Log the response body for debugging
+            error_details = e.response.text if hasattr(e.response, 'text') else str(e)
+            logger.error("HTTP Error %s: %s", e.response.status_code, error_details)
+            raise RuntimeError(f"Failed to submit transcription: {e} - Details: {error_details}")
         except requests.exceptions.RequestException as e:
             raise RuntimeError(f"Failed to submit transcription: {e}")
 
@@ -260,12 +275,20 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
             # Step 3: Poll for completion
             result = self._poll_transcription(transcript_id)
 
-            # Step 4: Process results
+            # Step 4: Process results with enhanced boundary detection
             utterances = result.get('utterances', [])
             if not utterances:
                 raise RuntimeError("No speaker labels found in transcript")
 
             logger.info("Found %d speaker utterances", len(utterances))
+            
+            # Apply enhanced boundary detection using word-level timestamps
+            words = result.get('words', [])
+            if words:
+                logger.info("Processing %d word-level timestamps for precise boundaries", len(words))
+                utterances = self._enhance_speaker_boundaries(utterances, words)
+            else:
+                logger.warning("No word-level timestamps available, using basic utterance boundaries")
 
             # Load original audio
             audio_data, sample_rate = sf.read(audio_file)
@@ -410,6 +433,81 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         self._cleanup_cross_talk(speaker_tracks, sample_rate)
 
         return speaker_tracks
+
+    def _enhance_speaker_boundaries(
+        self, utterances: List[Dict], words: List[Dict]
+    ) -> List[Dict]:
+        """
+        Enhance speaker boundaries using word-level timestamps for precise cuts
+        
+        Args:
+            utterances: Original speaker utterances
+            words: Word-level timestamps from AssemblyAI
+            
+        Returns:
+            Enhanced utterances with precise word-boundary timing
+        """
+        logger.info("Enhancing speaker boundaries with word-level precision")
+        
+        enhanced_utterances = []
+        
+        for i, utterance in enumerate(utterances):
+            speaker = utterance.get('speaker')
+            start_ms = utterance.get('start', 0)
+            end_ms = utterance.get('end', 0)
+            text = utterance.get('text', '')
+            
+            # Find words that belong to this utterance
+            utterance_words = [
+                word for word in words
+                if (word.get('start', 0) >= start_ms and 
+                    word.get('end', 0) <= end_ms + 100)  # 100ms tolerance
+            ]
+            
+            if not utterance_words:
+                # Fallback to original timing if no words found
+                enhanced_utterances.append(utterance)
+                continue
+            
+            # Use first and last word for precise boundaries
+            precise_start = utterance_words[0].get('start', start_ms)
+            precise_end = utterance_words[-1].get('end', end_ms)
+            
+            # Check for natural speech gaps and eliminate artificial ones
+            if i > 0:
+                prev_utterance = enhanced_utterances[-1]
+                prev_end = prev_utterance.get('end', 0)
+                gap_ms = precise_start - prev_end
+                
+                # If gap is very small (< 200ms), eliminate it for seamless transition
+                if gap_ms < 200:
+                    logger.debug("Eliminating %dms gap between speakers", gap_ms)
+                    precise_start = prev_end
+                    
+                # If gap is artificial (exactly 400ms), reduce to natural pause
+                elif 390 <= gap_ms <= 410:  # 400ms ± 10ms tolerance
+                    logger.debug("Converting artificial 400ms gap to natural 100ms pause")
+                    precise_start = prev_end + 100
+            
+            enhanced_utterance = {
+                'speaker': speaker,
+                'start': precise_start,
+                'end': precise_end,
+                'text': text,
+                'word_count': len(utterance_words),
+                'enhanced': True
+            }
+            
+            enhanced_utterances.append(enhanced_utterance)
+            
+            logger.debug(
+                "Enhanced %s: %.2fs-%.2fs (%d words) - '%s'",
+                speaker, precise_start/1000, precise_end/1000, 
+                len(utterance_words), text[:50]
+            )
+        
+        logger.info("Enhanced %d utterances with word-level boundaries", len(enhanced_utterances))
+        return enhanced_utterances
 
     def _cleanup_cross_talk(
         self, speaker_tracks: Dict[str, np.ndarray], sample_rate: int
