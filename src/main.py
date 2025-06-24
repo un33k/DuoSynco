@@ -135,6 +135,9 @@ from .video.video_sync import VideoSynchronizer
 @click.option('--create-sample-profiles', '-csp',
               is_flag=True,
               help='Create sample character profiles for testing')
+@click.option('--clone-voices', '-cv',
+              is_flag=True,
+              help='Enable voice cloning from original audio samples (preserves accents/characteristics)')
 def cli(input_file: Optional[Path],
         output_dir: Path,
         speakers: int,
@@ -169,7 +172,8 @@ def cli(input_file: Optional[Path],
         preview_only: bool,
         dialogue_quality: str,
         use_dialogue_api: bool,
-        create_sample_profiles: bool):
+        create_sample_profiles: bool,
+        clone_voices: bool):
     """
     DuoSynco - Sync videos with isolated speaker audio tracks
 
@@ -264,7 +268,7 @@ def cli(input_file: Optional[Path],
         
         return handle_tts_mode(
             input_file, total_duration, output_dir, api_key,
-            voice_mapping, tts_workers, tts_quality, timing_mode, gap_duration, verbose
+            voice_mapping, tts_workers, tts_quality, timing_mode, gap_duration, verbose, clone_voices
         )
     
     # Handle Edit mode
@@ -625,7 +629,8 @@ def handle_tts_mode(
     tts_quality: str,
     timing_mode: str,
     gap_duration: float,
-    verbose: bool
+    verbose: bool,
+    clone_voices: bool
 ) -> None:
     """Handle TTS generation mode"""
     import json
@@ -670,6 +675,64 @@ def handle_tts_mode(
             if parsed_voice_mapping:
                 click.echo(f"🗣️  Voice mapping: {parsed_voice_mapping}")
         
+        # Handle voice cloning if requested
+        if clone_voices:
+            from .audio.providers.elevenlabs.el_voice import VoiceManager
+            
+            click.echo("🎭 Voice cloning enabled - extracting speaker voices...")
+            
+            # Find the original audio file (assume it's in same dir with similar name)
+            audio_extensions = ['.mp3', '.wav', '.m4a', '.aac']
+            base_name = transcript_file.stem.replace('_stt_format', '').replace('_tts_format', '').replace('_clean_dialogue', '').replace('_dialogue', '')
+            original_audio = None
+            
+            # Look for original audio file
+            for ext in audio_extensions:
+                possible_path = transcript_file.parent.parent / 'sample_data' / f"{base_name}{ext}"
+                if possible_path.exists():
+                    original_audio = possible_path
+                    break
+            
+            if original_audio and original_audio.exists():
+                click.echo(f"📁 Found original audio: {original_audio}")
+                
+                # Extract speakers from the transcript file
+                speakers = list(set(seg.get('speaker', seg.get('speaker_id', '')) for seg in transcript_segments))
+                
+                # Set up voice samples directory
+                voice_samples_dir = output_dir / 'voice_samples'
+                voice_samples_dir.mkdir(exist_ok=True)
+                
+                # Check if voice samples already exist
+                speaker_samples = {}
+                for speaker in speakers:
+                    sample_file = voice_samples_dir / f"{speaker}_sample.wav"
+                    if sample_file.exists():
+                        speaker_samples[speaker] = str(sample_file)
+                        click.echo(f"✅ Using existing sample: {sample_file}")
+                
+                if speaker_samples:
+                    # Initialize voice manager and clone voices
+                    voice_manager = VoiceManager(api_key)
+                    
+                    click.echo(f"🎭 Cloning voices for {len(speaker_samples)} speakers...")
+                    cloned_mapping = voice_manager.clone_voices_from_samples(
+                        speaker_samples,
+                        language='fa',  # Persian
+                        name_prefix=f"annunaki_{base_name}"
+                    )
+                    
+                    if cloned_mapping:
+                        # Override voice mapping with cloned voices
+                        parsed_voice_mapping = cloned_mapping
+                        click.echo(f"✅ Voice cloning completed: {cloned_mapping}")
+                    else:
+                        click.echo("⚠️  Voice cloning failed, using default voices")
+                else:
+                    click.echo("⚠️  No voice samples found in voice_samples directory")
+            else:
+                click.echo("⚠️  Original audio file not found, using default voices")
+
         # Initialize TTS generator
         from .audio.audio_tts import TTSAudioGenerator
         tts_generator = TTSAudioGenerator(provider='elevenlabs', api_key=api_key)

@@ -3,7 +3,9 @@ Voice Management for ElevenLabs TTS
 Handles voice selection, mapping, and voice discovery
 """
 
+import json
 import logging
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 import requests
 
@@ -384,3 +386,166 @@ class VoiceManager:
         analysis['recommendations'] = recommendations
         
         return analysis
+    
+    def clone_voice(
+        self,
+        name: str,
+        audio_files: List[str],
+        description: Optional[str] = None,
+        labels: Optional[Dict[str, str]] = None,
+        remove_background_noise: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Create a voice clone using ElevenLabs Instant Voice Cloning API
+        
+        Args:
+            name: Name for the cloned voice
+            audio_files: List of audio file paths for voice cloning
+            description: Optional description of the voice
+            labels: Optional labels dictionary for the voice
+            remove_background_noise: Whether to remove background noise
+            
+        Returns:
+            Dictionary containing voice creation results
+        """
+        try:
+            # Prepare multipart form data
+            files = []
+            for audio_file in audio_files:
+                if not Path(audio_file).exists():
+                    raise FileNotFoundError(f"Audio file not found: {audio_file}")
+                
+                with open(audio_file, 'rb') as f:
+                    files.append(('files', (Path(audio_file).name, f.read(), 'audio/wav')))
+            
+            # Prepare form data
+            data = {
+                'name': name,
+                'remove_background_noise': str(remove_background_noise).lower()
+            }
+            
+            if description:
+                data['description'] = description
+                
+            if labels:
+                data['labels'] = json.dumps(labels)
+            
+            # Make API request
+            response = self.session.post(
+                f"{self.base_url}/voices/add",
+                files=files,
+                data=data,
+                timeout=120  # Voice creation can take time
+            )
+            
+            response.raise_for_status()
+            result = response.json()
+            
+            voice_id = result.get('voice_id')
+            logger.info("Successfully created voice clone: %s (ID: %s)", name, voice_id)
+            
+            return {
+                'success': True,
+                'voice_id': voice_id,
+                'name': name,
+                'description': description,
+                'labels': labels,
+                'audio_files': audio_files
+            }
+            
+        except Exception as e:
+            logger.error("Failed to clone voice '%s': %s", name, e)
+            return {
+                'success': False,
+                'error': str(e),
+                'name': name,
+                'audio_files': audio_files
+            }
+    
+    def clone_voices_from_samples(
+        self,
+        speaker_samples: Dict[str, str],
+        language: str = "fa",
+        name_prefix: str = "cloned"
+    ) -> Dict[str, str]:
+        """
+        Clone voices for multiple speakers from audio samples
+        
+        Args:
+            speaker_samples: Dict mapping speaker_id to audio file path
+            language: Language code for the voices
+            name_prefix: Prefix for generated voice names
+            
+        Returns:
+            Dict mapping speaker_id to cloned voice_id
+        """
+        voice_mapping = {}
+        
+        for speaker_id, audio_file in speaker_samples.items():
+            voice_name = f"{name_prefix}_{speaker_id}_{language}"
+            
+            # Add language-specific labels
+            labels = {
+                'language': language,
+                'source': 'voice_cloning',
+                'speaker_id': speaker_id
+            }
+            
+            description = f"Voice cloned from {speaker_id} speaking {language}"
+            
+            result = self.clone_voice(
+                name=voice_name,
+                audio_files=[audio_file],
+                description=description,
+                labels=labels,
+                remove_background_noise=True  # Clean up audio
+            )
+            
+            if result['success']:
+                voice_mapping[speaker_id] = result['voice_id']
+                logger.info("Mapped %s -> %s", speaker_id, result['voice_id'])
+            else:
+                logger.error("Failed to clone voice for %s: %s", speaker_id, result['error'])
+                # Fallback to default voice
+                if speaker_id in self.DEFAULT_VOICE_MAPPING:
+                    voice_mapping[speaker_id] = self.DEFAULT_VOICE_MAPPING[speaker_id]
+                    logger.warning("Using fallback voice for %s: %s", speaker_id, voice_mapping[speaker_id])
+        
+        return voice_mapping
+    
+    def delete_voice(self, voice_id: str) -> bool:
+        """
+        Delete a cloned voice
+        
+        Args:
+            voice_id: ID of the voice to delete
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            response = self.session.delete(f"{self.base_url}/voices/{voice_id}")
+            response.raise_for_status()
+            logger.info("Successfully deleted voice: %s", voice_id)
+            return True
+        except Exception as e:
+            logger.error("Failed to delete voice %s: %s", voice_id, e)
+            return False
+    
+    def list_cloned_voices(self) -> List[Dict[str, Any]]:
+        """
+        Get list of user's cloned voices
+        
+        Returns:
+            List of cloned voice dictionaries
+        """
+        voices = self.get_available_voices()
+        cloned_voices = []
+        
+        for voice in voices:
+            # Check if this is a cloned voice (has certain characteristics)
+            labels = voice.get('labels', {})
+            if labels.get('source') == 'voice_cloning' or 'cloned' in voice.get('name', '').lower():
+                cloned_voices.append(voice)
+        
+        return cloned_voices
