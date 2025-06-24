@@ -6,7 +6,11 @@ pathlib
 requests>=2.28.0
 python-dotenv>=1.0.0
 
-# HTTP API client (replaced AssemblyAI SDK for full control)
+# AI Provider SDKs (cleaner than direct HTTP calls)
+elevenlabs>=2.5.0
+assemblyai>=0.41.0
+
+# HTTP API client for other services
 
 # Audio/Video processing
 librosa>=0.10.0

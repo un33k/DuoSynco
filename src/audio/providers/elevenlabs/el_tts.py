@@ -12,10 +12,11 @@ import tempfile
 import concurrent.futures
 import threading
 
-import requests
 import soundfile as sf
 import numpy as np
 from pydub import AudioSegment
+from elevenlabs import ElevenLabs
+from elevenlabs.types import VoiceSettings
 
 from ..base import SpeakerDiarizationProvider
 from .el_voice import VoiceManager
@@ -46,12 +47,8 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
                 "Set ELEVEN_LABS_API_KEY environment variable"
             )
             
-        self.session = requests.Session()
-        self.session.headers.update({
-            "Accept": "audio/mpeg",
-            "Content-Type": "application/json",
-            "xi-api-key": self.api_key
-        })
+        # Initialize the ElevenLabs SDK client
+        self.client = ElevenLabs(api_key=self.api_key)
         
         self.voice_manager = VoiceManager(self.api_key, self.BASE_URL)
         self._validate_api_key()
@@ -106,14 +103,12 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
     def _validate_api_key(self) -> None:
         """Validate API key by making a test request"""
         try:
-            response = self.session.get(f"{self.BASE_URL}/voices")
-            response.raise_for_status()
+            # Use the SDK to validate the API key
+            voices = self.client.voices.get_all()
             logger.debug("API key validation successful")
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 401:
+        except Exception as e:
+            if "401" in str(e) or "Unauthorized" in str(e):
                 raise ValueError("Invalid ElevenLabs API key")
-            raise
-        except requests.exceptions.RequestException as e:
             logger.warning("Could not validate API key: %s", e)
     
     def generate_tts_audio(
@@ -123,7 +118,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
         settings: Optional[Dict[str, Any]] = None
     ) -> bytes:
         """
-        Generate TTS audio for given text and voice
+        Generate TTS audio for given text and voice using ElevenLabs SDK
         
         Args:
             text: Text to convert to speech
@@ -136,53 +131,63 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
         if not text.strip():
             # Return silence for empty text
             return b''
-            
-        url = f"{self.BASE_URL}/text-to-speech/{voice_id}"
         
         # High-quality TTS settings optimized for best audio quality
-        default_settings = {
+        default_voice_settings = {
             "stability": 0.75,           # Higher stability for consistency
             "similarity_boost": 0.85,    # Higher similarity for better voice matching
             "style": 0.2,               # Slight style enhancement for expressiveness
             "use_speaker_boost": True    # Enable speaker boost for clarity
         }
         
-        if settings:
-            default_settings.update(settings)
-            
-        # Use highest quality model available
-        model_id = settings.get('model_id', 'eleven_multilingual_v2') if settings else 'eleven_multilingual_v2'
+        # Extract model_id from settings if provided
+        model_id = 'eleven_multilingual_v2'  # Default model
+        output_format = "mp3_44100_128"       # High quality MP3 format
         
-        payload = {
-            "text": text,
-            "model_id": model_id,
-            "voice_settings": default_settings,
-            "output_format": "mp3_44100_128"  # High quality MP3 format
-        }
+        if settings:
+            # Update voice settings
+            default_voice_settings.update({k: v for k, v in settings.items() 
+                                         if k in ['stability', 'similarity_boost', 'style', 'use_speaker_boost']})
+            # Extract other parameters
+            model_id = settings.get('model_id', model_id)
+            output_format = settings.get('output_format', output_format)
+        
+        # Create VoiceSettings object for the SDK
+        voice_settings = VoiceSettings(
+            stability=default_voice_settings['stability'],
+            similarity_boost=default_voice_settings['similarity_boost'],
+            style=default_voice_settings['style'],
+            use_speaker_boost=default_voice_settings['use_speaker_boost']
+        )
         
         try:
-            # Log the full API call details in verbose mode
-            logger.info("🔗 ElevenLabs TTS API Call:")
-            logger.info("   URL: %s", url)
-            logger.info("   Model: %s", model_id)
+            # Log the API call details in verbose mode
+            logger.info("🔗 ElevenLabs TTS SDK Call:")
             logger.info("   Voice: %s", voice_id)
+            logger.info("   Model: %s", model_id)
+            logger.info("   Output Format: %s", output_format)
             logger.info("   Text: '%.100s%s'", text[:100], "..." if len(text) > 100 else "")
-            logger.debug("   Headers: %s", dict(self.session.headers))
-            logger.debug("   Payload: %s", payload)
+            logger.debug("   Voice Settings: %s", voice_settings)
             
-            response = self.session.post(url, json=payload, timeout=60)
-            response.raise_for_status()
+            # Use the SDK to generate TTS
+            audio_generator = self.client.text_to_speech.convert(
+                voice_id=voice_id,
+                text=text,
+                model_id=model_id,
+                voice_settings=voice_settings,
+                output_format=output_format
+            )
             
-            logger.info("✅ TTS generated successfully (%.1f KB)", len(response.content) / 1024)
+            # Collect all audio chunks
+            audio_data = b''.join(audio_generator)
+            
+            logger.info("✅ TTS generated successfully (%.1f KB)", len(audio_data) / 1024)
             logger.debug("Generated TTS for text: '%.50s...' (voice: %s)", 
                         text[:50], voice_id)
-            return response.content
+            return audio_data
             
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
             logger.error("❌ TTS generation failed for voice %s: %s", voice_id, e)
-            if hasattr(e, 'response') and e.response is not None:
-                logger.error("   Response status: %s", e.response.status_code)
-                logger.error("   Response body: %s", e.response.text[:500])
             raise RuntimeError(f"TTS generation failed: {e}")
     
     def measure_tts_duration(
@@ -718,6 +723,6 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
         )
     
     def __del__(self):
-        """Clean up session on destruction"""
-        if hasattr(self, 'session'):
-            self.session.close()
+        """Clean up resources on destruction"""
+        # SDK handles cleanup automatically
+        pass

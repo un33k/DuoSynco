@@ -1,6 +1,6 @@
 """
 AssemblyAI Speaker Diarization Provider
-Direct HTTP API implementation for maximum control and cross-platform compatibility
+Using the official AssemblyAI SDK for cleaner and more maintainable code
 """
 
 import os
@@ -9,7 +9,7 @@ import logging
 from typing import Dict, List, Tuple, Optional
 from pathlib import Path
 
-import requests
+import assemblyai as aai
 import soundfile as sf
 import numpy as np
 
@@ -20,17 +20,13 @@ logger = logging.getLogger(__name__)
 
 class AssemblyAIDiarizer(SpeakerDiarizationProvider):
     """
-    Speaker diarization using AssemblyAI's HTTP API directly
-    Provides full control over requests and cross-platform compatibility
+    Speaker diarization using AssemblyAI's official SDK
+    Provides cleaner, more maintainable code with automatic error handling
     """
-
-    BASE_URL = "https://api.assemblyai.com/v2"
-    UPLOAD_URL = f"{BASE_URL}/upload"
-    TRANSCRIPT_URL = f"{BASE_URL}/transcript"
 
     def __init__(self, api_key: Optional[str] = None):
         """
-        Initialize AssemblyAI diarizer with direct HTTP API
+        Initialize AssemblyAI diarizer with SDK
 
         Args:
             api_key: AssemblyAI API key. If None, will try to get from env
@@ -43,14 +39,9 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
                 "Set ASSEMBLYAI_API_KEY environment variable"
             )
 
-        self.headers = {
-            "authorization": self.api_key,
-            "content-type": "application/json"
-        }
-
-        # Setup session for connection reuse
-        self.session = requests.Session()
-        self.session.headers.update(self.headers)
+        # Configure the SDK
+        aai.settings.api_key = self.api_key
+        self.transcriber = aai.Transcriber()
 
         # Test API key validity
         self._validate_api_key()
@@ -90,195 +81,16 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         return None
 
     def _validate_api_key(self) -> None:
-        """Validate API key by making a test request"""
+        """Validate API key by testing SDK connection"""
         try:
-            response = self.session.get(f"{self.BASE_URL}/transcript")
-            response.raise_for_status()
+            # Try to list transcripts to validate the API key (no parameters needed)
+            transcripts = self.transcriber.list_transcripts()
             logger.debug("API key validation successful")
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 401:
+        except Exception as e:
+            if "401" in str(e) or "Unauthorized" in str(e):
                 raise ValueError("Invalid AssemblyAI API key")
-            raise
-        except requests.exceptions.RequestException as e:
             logger.warning("Could not validate API key: %s", e)
 
-    def _upload_file(self, audio_file: str) -> str:
-        """
-        Upload audio file to AssemblyAI and return upload URL
-
-        Args:
-            audio_file: Path to audio file
-
-        Returns:
-            Upload URL for the file
-        """
-        logger.info("Uploading file: %s", audio_file)
-
-        upload_headers = {"authorization": self.api_key}
-
-        try:
-            with open(audio_file, 'rb') as f:
-                response = self.session.post(
-                    self.UPLOAD_URL,
-                    files={'file': f},
-                    headers=upload_headers,
-                    timeout=300  # 5 minute timeout for upload
-                )
-            response.raise_for_status()
-
-            upload_url = response.json().get('upload_url')
-            if not upload_url:
-                raise ValueError("No upload URL returned from AssemblyAI")
-
-            logger.info("File uploaded successfully")
-            return upload_url
-
-        except requests.exceptions.RequestException as e:
-            raise RuntimeError(f"Failed to upload file: {e}")
-
-    def _submit_transcription(
-        self,
-        audio_url: str,
-        speakers_expected: int,
-        language: str
-    ) -> str:
-        """
-        Submit transcription request to AssemblyAI
-
-        Args:
-            audio_url: URL of uploaded audio file
-            speakers_expected: Number of speakers expected
-            language: Language code
-
-        Returns:
-            Transcript ID for polling
-        """
-        logger.info("Submitting transcription request")
-
-        data = {
-            "audio_url": audio_url,
-            "speaker_labels": True,
-            "punctuate": True,
-            "format_text": True,
-            # Enhanced quality settings
-            "speech_model": "best",
-            "language_detection": True,
-            "disfluencies": True,
-            "sentiment_analysis": True,
-            "auto_highlights": True,
-            # Advanced speaker detection
-            "speaker_options": {
-                "min_speakers_expected": max(1, speakers_expected - 1),
-                "max_speakers_expected": min(10, speakers_expected + 2)
-            },
-            # Domain-specific boosting for conversation accuracy
-            "word_boost": [
-                "yeah", "okay", "right", "exactly", "absolutely", "well",
-                "um", "uh", "like", "you know", "I mean", "sort of",
-                "speaker", "person", "voice", "conversation", "dialogue",
-                "Anunnaki", "Mesopotamia", "Sumerian", "Babylonian", "Assyrian"
-            ],
-            "boost_param": "high",
-            # Custom spelling for proper nouns and technical terms
-            "custom_spelling": [
-                {"from": "anunaki", "to": "Anunnaki"},
-                {"from": "mesopotamia", "to": "Mesopotamia"},
-                {"from": "sumerian", "to": "Sumerian"},
-                {"from": "babylonian", "to": "Babylonian"},
-                {"from": "assyrian", "to": "Assyrian"},
-                {"from": "enlil", "to": "Enlil"},
-                {"from": "enki", "to": "Enki"},
-                {"from": "inanna", "to": "Inanna"},
-                {"from": "ishtar", "to": "Ishtar"}
-            ]
-        }
-        
-        # Use language_code OR language_detection, not both
-        if language and language != "auto":
-            data["language_code"] = language
-            del data["language_detection"]
-            
-            # Disable features not available for non-English languages
-            if language != "en":
-                logger.info("Disabling advanced features for non-English language: %s", language)
-                # Keep only basic features supported by all languages
-                features_to_remove = ["sentiment_analysis", "auto_highlights", "disfluencies"]
-                if language not in ["en", "es", "fr", "de"]:  # Languages that support speaker_labels
-                    features_to_remove.extend(["speaker_labels", "speaker_options"])
-                    logger.warning("Speaker diarization may not be supported for language: %s", language)
-                
-                for feature in features_to_remove:
-                    if feature in data:
-                        del data[feature]
-                        logger.debug("Removed unsupported feature: %s", feature)
-
-        try:
-            response = self.session.post(
-                self.TRANSCRIPT_URL,
-                json=data,
-                timeout=30
-            )
-            response.raise_for_status()
-
-            transcript_id = response.json().get('id')
-            if not transcript_id:
-                raise ValueError("No transcript ID returned from AssemblyAI")
-
-            logger.info("Transcription submitted with ID: %s", transcript_id)
-            return transcript_id
-
-        except requests.exceptions.HTTPError as e:
-            # Log the response body for debugging
-            error_details = e.response.text if hasattr(e.response, 'text') else str(e)
-            logger.error("HTTP Error %s: %s", e.response.status_code, error_details)
-            raise RuntimeError(f"Failed to submit transcription: {e} - Details: {error_details}")
-        except requests.exceptions.RequestException as e:
-            raise RuntimeError(f"Failed to submit transcription: {e}")
-
-    def _poll_transcription(self, transcript_id: str) -> Dict:
-        """
-        Poll for transcription completion
-
-        Args:
-            transcript_id: ID of the transcription job
-
-        Returns:
-            Complete transcription result
-        """
-        logger.info("Polling transcription status...")
-
-        url = f"{self.TRANSCRIPT_URL}/{transcript_id}"
-        max_wait_time = 1800  # 30 minutes max
-        start_time = time.time()
-        poll_interval = 5  # Start with 5 seconds
-
-        while time.time() - start_time < max_wait_time:
-            try:
-                response = self.session.get(url, timeout=30)
-                response.raise_for_status()
-                result = response.json()
-
-                status = result.get('status')
-                logger.debug("Transcription status: %s", status)
-
-                if status == 'completed':
-                    logger.info("Transcription completed successfully")
-                    return result
-                elif status == 'error':
-                    error_msg = result.get('error', 'Unknown error')
-                    raise RuntimeError(f"Transcription failed: {error_msg}")
-                elif status in ['queued', 'processing']:
-                    time.sleep(poll_interval)
-                    # Gradually increase poll interval up to 30 seconds
-                    poll_interval = min(poll_interval + 2, 30)
-                else:
-                    raise RuntimeError(f"Unknown transcription status: {status}")
-
-            except requests.exceptions.RequestException as e:
-                logger.warning("Error polling transcription: %s", e)
-                time.sleep(poll_interval)
-
-        raise TimeoutError("Transcription timed out after 30 minutes")
 
     def diarize(
         self,
@@ -288,7 +100,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         enhanced_processing: bool = True
     ) -> Tuple[Dict[str, np.ndarray], str, List[Dict]]:
         """
-        Perform speaker diarization on audio file using HTTP API
+        Perform speaker diarization on audio file using AssemblyAI SDK
 
         Args:
             audio_file: Path to audio file
@@ -299,31 +111,116 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         Returns:
             Tuple of (speaker_tracks_dict, transcript_text, utterances_list)
         """
-        logger.info("Starting diarization for: %s", audio_file)
+        logger.info("🎤 Starting AssemblyAI diarization for: %s", audio_file)
 
         try:
-            # Step 1: Upload file
-            audio_url = self._upload_file(audio_file)
+            # Prepare configuration parameters based on language and features
+            config_params = {
+                "speaker_labels": True,
+                "punctuate": True,
+                "format_text": True,
+                "speech_model": aai.SpeechModel.best,
+            }
+            
+            # Set language-specific parameters
+            if language and language != "auto":
+                config_params["language_code"] = language
+                config_params["language_detection"] = False
+                
+                # Disable features not available for non-English languages
+                if language != "en":
+                    logger.info("Disabling advanced features for non-English language: %s", language)
+                    config_params.update({
+                        "sentiment_analysis": False,
+                        "auto_highlights": False,
+                        "disfluencies": False
+                    })
+                else:
+                    config_params.update({
+                        "sentiment_analysis": True,
+                        "auto_highlights": True,
+                        "disfluencies": True
+                    })
+            else:
+                config_params["language_detection"] = True
+                config_params.update({
+                    "sentiment_analysis": True,
+                    "auto_highlights": True,
+                    "disfluencies": True
+                })
+            
+            # Add domain-specific word boosting for conversation accuracy
+            config_params["word_boost"] = [
+                "yeah", "okay", "right", "exactly", "absolutely", "well",
+                "um", "uh", "like", "you know", "I mean", "sort of",
+                "speaker", "person", "voice", "conversation", "dialogue",
+                "Anunnaki", "Mesopotamia", "Sumerian", "Babylonian", "Assyrian"
+            ]
+            config_params["boost_param"] = aai.WordBoost.high
+            
+            # Custom spelling for proper nouns and technical terms (dict format)
+            config_params["custom_spelling"] = {
+                "anunaki": "Anunnaki",
+                "mesopotamia": "Mesopotamia", 
+                "sumerian": "Sumerian",
+                "babylonian": "Babylonian",
+                "assyrian": "Assyrian",
+                "enlil": "Enlil",
+                "enki": "Enki",
+                "inanna": "Inanna",
+                "ishtar": "Ishtar"
+            }
+            
+            # Create configuration with all parameters at once
+            config = aai.TranscriptionConfig(**config_params)
 
-            # Step 2: Submit transcription
-            transcript_id = self._submit_transcription(
-                audio_url, speakers_expected, language
-            )
+            logger.info("🔗 AssemblyAI SDK Call:")
+            logger.info("   Audio File: %s", audio_file)
+            logger.info("   Language: %s", language)
+            logger.info("   Speakers Expected: %d", speakers_expected)
+            logger.info("   Enhanced Processing: %s", enhanced_processing)
+            logger.info("   Config: Speaker Labels=%s, Speech Model=%s", 
+                       config.speaker_labels, config.speech_model)
 
-            # Step 3: Poll for completion
-            result = self._poll_transcription(transcript_id)
+            # Transcribe with SDK (handles upload, submission, and polling automatically)
+            transcript = self.transcriber.transcribe(audio_file, config=config)
+            
+            logger.info("✅ Transcription completed with status: %s", transcript.status)
+            
+            # Check for errors
+            if transcript.status == aai.TranscriptStatus.error:
+                raise RuntimeError(f"Transcription failed: {transcript.error}")
 
-            # Step 4: Process results with enhanced boundary detection
-            utterances = result.get('utterances', [])
-            if not utterances:
+            # Extract utterances from SDK response
+            utterances = []
+            if transcript.utterances:
+                logger.info("Found %d speaker utterances", len(transcript.utterances))
+                utterances = [
+                    {
+                        'speaker': utt.speaker,
+                        'start': utt.start,
+                        'end': utt.end,
+                        'text': utt.text,
+                        'confidence': getattr(utt, 'confidence', 0.0)
+                    }
+                    for utt in transcript.utterances
+                ]
+            else:
                 raise RuntimeError("No speaker labels found in transcript")
-
-            logger.info("Found %d speaker utterances", len(utterances))
             
             # Apply enhanced boundary detection using word-level timestamps
-            words = result.get('words', [])
-            if words:
-                logger.info("Processing %d word-level timestamps for precise boundaries", len(words))
+            if transcript.words:
+                logger.info("Processing %d word-level timestamps for precise boundaries", len(transcript.words))
+                words = [
+                    {
+                        'text': word.text,
+                        'start': word.start,
+                        'end': word.end,
+                        'confidence': word.confidence,
+                        'speaker': getattr(word, 'speaker', None)
+                    }
+                    for word in transcript.words
+                ]
                 utterances = self._enhance_speaker_boundaries(utterances, words)
             else:
                 logger.warning("No word-level timestamps available, using basic utterance boundaries")
@@ -342,24 +239,24 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
                 )
 
             # Prepare transcript text
-            transcript_text = self._format_transcript(utterances)
+            transcript_text = transcript.text if transcript.text else self._format_transcript(utterances)
 
-            # Prepare utterances list
+            # Prepare utterances list for compatibility
             utterances_list = [
                 {
                     'speaker': u.get('speaker'),
-                    'start': u.get('start', 0) / 1000.0,
-                    'end': u.get('end', 0) / 1000.0,
+                    'start': u.get('start', 0) / 1000.0,  # Convert to seconds if needed
+                    'end': u.get('end', 0) / 1000.0,      # Convert to seconds if needed
                     'text': u.get('text', '')
                 }
                 for u in utterances
             ]
 
-            logger.info("Diarization completed successfully")
+            logger.info("✅ Diarization completed successfully with %d speakers", len(speaker_tracks))
             return speaker_tracks, transcript_text, utterances_list
 
         except Exception as e:
-            logger.error("Diarization failed: %s", e)
+            logger.error("❌ Diarization failed: %s", e)
             raise
 
     def _basic_separation(
@@ -652,7 +549,3 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         logger.info("Saved transcript: %s", transcript_file)
         return saved_files
 
-    def __del__(self):
-        """Clean up session on destruction"""
-        if hasattr(self, 'session'):
-            self.session.close()

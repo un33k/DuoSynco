@@ -341,7 +341,7 @@ class TTSAudioGenerator:
                 'similarity_boost': 0.85,
                 'style': 0.2,
                 'use_speaker_boost': True,
-                'output_format': 'mp3_44100_48'      # 48kbps - excellent voice quality
+                'output_format': 'mp3_44100_64'      # 64kbps - excellent voice quality
             },
             'ultra': {
                 'model_id': 'eleven_multilingual_v2', # Best available model
@@ -349,7 +349,7 @@ class TTSAudioGenerator:
                 'similarity_boost': 0.9,              # Maximum similarity
                 'style': 0.3,                         # Enhanced expressiveness
                 'use_speaker_boost': True,
-                'output_format': 'mp3_44100_64'      # 64kbps - premium voice quality
+                'output_format': 'mp3_44100_128'     # 128kbps - premium voice quality
             }
         }
         
