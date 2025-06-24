@@ -1,0 +1,34 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "assemblyai",
+    "elevenlabs",
+    "ASSEMBLYAI",
+    "ELEVENLABS",
+    "duosynco",
+    "DuoSynco",
+    "diarization",
+    "moviepy",
+    "pydub",
+    "librosa",
+    "soundfile",
+    "pyannote",
+    "ffmpeg",
+    "aac",
+    "mkv",
+    "webm",
+    "wmv",
+    "flac",
+    "ogg"
+  ],
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    "*.pyc",
+    "__pycache__/**",
+    ".venv/**",
+    "output/**",
+    "sample_data/**"
+  ]
+}

@@ -8,7 +8,7 @@ from typing import Optional, Tuple, Dict, Any
 import tempfile
 import subprocess
 
-from .processor import VideoProcessor
+from .video_processor import VideoProcessor
 from ..utils.config import Config
 
 

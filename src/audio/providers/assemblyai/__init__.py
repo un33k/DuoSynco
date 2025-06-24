@@ -2,6 +2,6 @@
 AssemblyAI provider for speaker diarization
 """
 
-from .diarizer import AssemblyAIDiarizer
+from .ai_diarizer import AssemblyAIDiarizer
 
 __all__ = ['AssemblyAIDiarizer']

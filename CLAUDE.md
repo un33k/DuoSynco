@@ -210,6 +210,58 @@ The application supports multiple configuration methods:
 - This ensures API keys from .zshrc are loaded AND virtual environment is activated
 - Example: `source ~/.zshrc && source .venv/bin/activate && python -m src.main --list-providers`
 
+## CLI Standards and Conventions
+
+### Option Naming Convention
+- **ALWAYS provide both short and long options** for all CLI parameters (e.g., `-p` and `--provider`)
+- **Exception**: Only skip the short option if it's already taken by another option
+- **Examples**:
+  - `--provider, -p` ✅ (both provided)
+  - `--verbose, -v` ✅ (both provided) 
+  - `--version` ✅ (only long, because `-v` is taken by `--verbose`)
+  - `--help` ✅ (only long, because `-h` is taken by `--help`)
+
+### Provider Architecture
+- **Provider vs Feature vs Mode distinction**:
+  - `--provider` (`-p`): The service provider (e.g., `assemblyai`, `elevenlabs`)
+  - **Feature**: What the provider does (e.g., STT, TTS, diarization)
+  - `--mode`: The workflow type (e.g., `diarization`, `edit`, `tts`)
+- **Examples**:
+  - `elevenlabs` is the provider
+  - `stt` is a feature of ElevenLabs
+  - `edit` is the mode that uses ElevenLabs STT feature
+  - NOT `elevenlabs-stt` as a provider name
+
+### Execution Path Examples
+```bash
+# ElevenLabs provider, STT feature, edit mode
+python -m src.main input.mp4 -p elevenlabs --mode edit
+
+# ElevenLabs provider, TTS feature, tts mode  
+python -m src.main transcript.json -p elevenlabs --mode tts
+
+# AssemblyAI provider, diarization feature, diarization mode (default)
+python -m src.main input.mp4 -p assemblyai
+
+# Note: TTS mode uses transcript file as input
+python -m src.main transcript.json -p elevenlabs --mode tts --total-duration 120
+```
+
+### Short Option Assignments
+- `-p`: `--provider`
+- `-o`: `--output-dir`
+- `-s`: `--speakers`
+- `-f`: `--format`
+- `-q`: `--quality`
+- `-l`: `--language`
+- `-v`: `--verbose`
+- `-sp`: `--secondary-provider`
+- `-sq`: `--stt-quality`
+- `-ei`: `--edit-interactive`
+- `-sm`: `--speaker-mapping`
+- `-ot`: `--output-transcript`
+- `-lep`: `--list-execution-paths`
+
 ## Troubleshooting
 
 - **FFmpeg not found**: Install FFmpeg separately for best performance

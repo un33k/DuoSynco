@@ -5,7 +5,7 @@ Provider factory for speaker diarization services
 from typing import Optional
 from .base import SpeakerDiarizationProvider
 from .assemblyai import AssemblyAIDiarizer
-from .elevenlabs import ElevenLabsTTSProvider
+from .elevenlabs import ElevenLabsTTSProvider, ElevenLabsSTTProvider
 
 
 class ProviderFactory:
@@ -14,6 +14,7 @@ class ProviderFactory:
     AVAILABLE_PROVIDERS = {
         'assemblyai': AssemblyAIDiarizer,
         'elevenlabs': ElevenLabsTTSProvider,
+        'elevenlabs-stt': ElevenLabsSTTProvider,
     }
 
     @classmethod
@@ -26,7 +27,7 @@ class ProviderFactory:
         Get a speaker diarization provider instance
 
         Args:
-            provider_name: Name of the provider ('assemblyai', 'elevenlabs')
+            provider_name: Name of the provider ('assemblyai', 'elevenlabs', 'elevenlabs-stt')
             api_key: API key for the provider
 
         Returns:
