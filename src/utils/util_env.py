@@ -38,13 +38,16 @@ def get_voice_mapping() -> Dict[str, str]:
     """Get voice mapping from environment variables"""
     voice_mapping = {}
     
-    voice_a = get_env('VOICE_SPEAKER_A')
-    voice_b = get_env('VOICE_SPEAKER_B')
+    # Support both old and new naming conventions for backwards compatibility
+    voice_0 = get_env('VOICE_SPEAKER_0') or get_env('VOICE_SPEAKER_A')
+    voice_1 = get_env('VOICE_SPEAKER_1') or get_env('VOICE_SPEAKER_B')
     
-    if voice_a:
-        voice_mapping['A'] = voice_a
-    if voice_b:
-        voice_mapping['B'] = voice_b
+    if voice_0:
+        voice_mapping['speaker_0'] = voice_0
+        voice_mapping['A'] = voice_0  # Backwards compatibility
+    if voice_1:
+        voice_mapping['speaker_1'] = voice_1
+        voice_mapping['B'] = voice_1  # Backwards compatibility
     
     return voice_mapping
 

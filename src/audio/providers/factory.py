@@ -13,7 +13,7 @@ class ProviderFactory:
 
     AVAILABLE_PROVIDERS = {
         'assemblyai': AssemblyAIDiarizer,
-        'elevenlabs': ElevenLabsTTSProvider,
+        'elevenlabs': ElevenLabsSTTProvider,  # For diarization, use STT provider
         'elevenlabs-stt': ElevenLabsSTTProvider,
     }
 

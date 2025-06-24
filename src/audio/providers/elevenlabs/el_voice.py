@@ -192,3 +192,195 @@ class VoiceManager:
                 }
                 
         return default_info
+    
+    def get_all_voices(self) -> List[Dict[str, Any]]:
+        """
+        Get all available voices (alias for get_available_voices)
+        
+        Returns:
+            List of all voice dictionaries
+        """
+        return self.get_available_voices()
+    
+    def get_voices_by_language(self, language: str) -> List[Dict[str, Any]]:
+        """
+        Get voices filtered by language
+        
+        Args:
+            language: Language code (e.g., 'en', 'es', 'fr', 'fa')
+            
+        Returns:
+            List of voices supporting the language
+        """
+        voices = self.get_available_voices()
+        language_voices = []
+        
+        for voice in voices:
+            # Check if voice supports the language
+            labels = voice.get('labels', {})
+            supported_languages = labels.get('languages', [])
+            
+            if language in supported_languages:
+                language_voices.append(voice)
+            elif language == 'en' and not supported_languages:
+                # Default to English if no language specified
+                language_voices.append(voice)
+        
+        return language_voices
+    
+    def get_voices_by_gender(self, gender: str) -> List[Dict[str, Any]]:
+        """
+        Get voices filtered by gender
+        
+        Args:
+            gender: 'male' or 'female'
+            
+        Returns:
+            List of voices matching gender
+        """
+        return self.get_voice_suggestions(gender)
+    
+    def create_dialogue_voice_mapping(
+        self,
+        speakers: List[str],
+        language: str = "en",
+        gender_preferences: Optional[Dict[str, str]] = None,
+        custom_mapping: Optional[Dict[str, str]] = None
+    ) -> Dict[str, str]:
+        """
+        Create optimized voice mapping for dialogue generation
+        
+        Args:
+            speakers: List of speaker IDs
+            language: Target language for voices
+            gender_preferences: Optional mapping of speaker_id -> preferred gender
+            custom_mapping: Optional custom speaker to voice ID mapping
+            
+        Returns:
+            Dictionary mapping speaker IDs to optimal voice IDs for dialogue
+        """
+        voice_mapping = {}
+        
+        # Get available voices for the language
+        available_voices = self.get_voices_by_language(language)
+        if not available_voices:
+            # Fallback to all voices if language-specific not found
+            available_voices = self.get_available_voices()
+        
+        # Separate voices by gender if preferences specified
+        male_voices = []
+        female_voices = []
+        neutral_voices = []
+        
+        for voice in available_voices:
+            labels = voice.get('labels', {})
+            gender = labels.get('gender', '').lower()
+            
+            if gender == 'male':
+                male_voices.append(voice)
+            elif gender == 'female':
+                female_voices.append(voice)
+            else:
+                neutral_voices.append(voice)
+        
+        # Assign voices to speakers
+        male_index = 0
+        female_index = 0
+        neutral_index = 0
+        
+        for speaker in speakers:
+            # Check for custom mapping first
+            if custom_mapping and speaker in custom_mapping:
+                voice_mapping[speaker] = custom_mapping[speaker]
+                continue
+            
+            # Check gender preference
+            preferred_gender = gender_preferences.get(speaker) if gender_preferences else None
+            
+            if preferred_gender == 'male' and male_voices:
+                voice_mapping[speaker] = male_voices[male_index % len(male_voices)]['voice_id']
+                male_index += 1
+            elif preferred_gender == 'female' and female_voices:
+                voice_mapping[speaker] = female_voices[female_index % len(female_voices)]['voice_id']
+                female_index += 1
+            elif neutral_voices:
+                voice_mapping[speaker] = neutral_voices[neutral_index % len(neutral_voices)]['voice_id']
+                neutral_index += 1
+            elif available_voices:
+                # Fallback to any available voice
+                fallback_index = len(voice_mapping) % len(available_voices)
+                voice_mapping[speaker] = available_voices[fallback_index]['voice_id']
+            else:
+                # Last resort: use default mapping
+                if speaker in self.DEFAULT_VOICE_MAPPING:
+                    voice_mapping[speaker] = self.DEFAULT_VOICE_MAPPING[speaker]
+                else:
+                    default_voices = list(self.DEFAULT_VOICE_MAPPING.values())
+                    voice_mapping[speaker] = default_voices[len(voice_mapping) % len(default_voices)]
+        
+        logger.info("Created dialogue voice mapping for language '%s': %s", language, voice_mapping)
+        return voice_mapping
+    
+    def analyze_voice_compatibility(self, voice_ids: List[str]) -> Dict[str, Any]:
+        """
+        Analyze compatibility of voices for dialogue generation
+        
+        Args:
+            voice_ids: List of voice IDs to analyze
+            
+        Returns:
+            Compatibility analysis results
+        """
+        voices_info = []
+        for voice_id in voice_ids:
+            info = self.get_voice_info(voice_id)
+            if info:
+                voices_info.append(info)
+        
+        if not voices_info:
+            return {'compatible': False, 'reason': 'No valid voices found'}
+        
+        # Check language compatibility
+        languages = set()
+        for voice in voices_info:
+            labels = voice.get('labels', {})
+            voice_languages = labels.get('languages', ['en'])
+            languages.update(voice_languages)
+        
+        # Check gender diversity
+        genders = []
+        for voice in voices_info:
+            labels = voice.get('labels', {})
+            gender = labels.get('gender', 'unknown')
+            genders.append(gender)
+        
+        gender_diversity = len(set(genders))
+        
+        analysis = {
+            'compatible': True,
+            'voice_count': len(voices_info),
+            'languages': list(languages),
+            'genders': genders,
+            'gender_diversity': gender_diversity,
+            'voices': [
+                {
+                    'voice_id': v['voice_id'],
+                    'name': v.get('name', 'Unknown'),
+                    'gender': v.get('labels', {}).get('gender', 'unknown'),
+                    'languages': v.get('labels', {}).get('languages', ['en'])
+                }
+                for v in voices_info
+            ]
+        }
+        
+        # Add recommendations
+        recommendations = []
+        if gender_diversity == 1 and len(voices_info) > 1:
+            recommendations.append("Consider using voices of different genders for better dialogue distinction")
+        
+        if len(languages) > 1:
+            recommendations.append("Multiple languages detected - ensure all voices support the target language")
+        
+        analysis['recommendations'] = recommendations
+        
+        return analysis

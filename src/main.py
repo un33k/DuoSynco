@@ -55,9 +55,9 @@ from .video.video_sync import VideoSynchronizer
               is_flag=True,
               help='Enable verbose output')
 @click.option('--mode',
-              type=click.Choice(['diarization', 'tts', 'edit']),
+              type=click.Choice(['diarization', 'tts', 'edit', 'dialogue']),
               default='diarization',
-              help='Processing mode: diarization (default), tts generation, or edit workflow')
+              help='Processing mode: diarization (default), tts generation, edit workflow, or dialogue generation')
 @click.option('--transcript-file',
               type=click.Path(path_type=Path),
               help='Transcript file for TTS mode (JSON or TXT format)')
@@ -108,6 +108,33 @@ from .video.video_sync import VideoSynchronizer
 @click.option('--list-execution-paths', '-lep',
               is_flag=True,
               help='List available execution paths for each provider and exit')
+@click.option('--dialogue-language', '-dl',
+              type=str,
+              default='en',
+              help='Language for dialogue voice selection (default: en)')
+@click.option('--gender-preferences', '-gp',
+              type=str,
+              help='Gender preferences as JSON string (e.g., \'{"speaker_0": "male", "speaker_1": "female"}\')')
+@click.option('--character-profiles', '-cp',
+              type=click.Path(path_type=Path),
+              help='Character profiles file (JSON format)')
+@click.option('--interactive-voices', '-iv',
+              is_flag=True,
+              help='Interactive voice assignment for dialogue mode')
+@click.option('--preview-only', '-po',
+              is_flag=True,
+              help='Preview dialogue generation without creating audio (dialogue mode)')
+@click.option('--dialogue-quality', '-dq',
+              type=click.Choice(['standard', 'high', 'ultra']),
+              default='high',
+              help='Quality for dialogue generation (default: high)')
+@click.option('--use-dialogue-api', '-uda',
+              is_flag=True,
+              default=True,
+              help='Use ElevenLabs Text to Dialogue API if available (default: enabled)')
+@click.option('--create-sample-profiles', '-csp',
+              is_flag=True,
+              help='Create sample character profiles for testing')
 def cli(input_file: Optional[Path],
         output_dir: Path,
         speakers: int,
@@ -134,19 +161,28 @@ def cli(input_file: Optional[Path],
         edit_interactive: bool,
         speaker_mapping: Optional[str],
         output_transcript: Optional[Path],
-        list_execution_paths: bool):
+        list_execution_paths: bool,
+        dialogue_language: str,
+        gender_preferences: Optional[str],
+        character_profiles: Optional[Path],
+        interactive_voices: bool,
+        preview_only: bool,
+        dialogue_quality: str,
+        use_dialogue_api: bool,
+        create_sample_profiles: bool):
     """
     DuoSynco - Sync videos with isolated speaker audio tracks
 
     Takes an input file and creates processed output files based on the selected mode:
     - Diarization/Edit modes: Input should be audio/video file
     - TTS mode: Input should be transcript file (JSON/TXT format)
+    - Dialogue mode: Input should be STT transcript file for voice assignment and generation
 
     PROVIDER-BASED EXECUTION PATHS:
     - assemblyai: Professional diarization workflow (cost-effective)
-    - elevenlabs: Premium STT/TTS with advanced features
+    - elevenlabs: Premium STT/TTS with advanced features and dialogue generation
 
-    INPUT_FILE: Path to the input file (audio/video for diarization/edit, transcript for TTS)
+    INPUT_FILE: Path to the input file (audio/video for diarization/edit, transcript for TTS/dialogue)
     """
 
     # Set up logging
@@ -237,6 +273,14 @@ def cli(input_file: Optional[Path],
             input_file, output_dir, speakers, language, provider, secondary_provider,
             stt_quality, edit_interactive, speaker_mapping, output_transcript,
             api_key, verbose
+        )
+    
+    # Handle Dialogue mode
+    if mode == 'dialogue':
+        return handle_dialogue_mode(
+            input_file, output_dir, dialogue_language, gender_preferences,
+            character_profiles, interactive_voices, preview_only, dialogue_quality,
+            use_dialogue_api, create_sample_profiles, voice_mapping, api_key, verbose
         )
 
     # Validate input file is provided for diarization mode
@@ -363,6 +407,208 @@ def cli(input_file: Optional[Path],
 
     except Exception as e:
         click.echo(f"❌ Error processing file: {str(e)}", err=True)
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
+def handle_dialogue_mode(
+    input_file: Optional[Path],
+    output_dir: Path,
+    dialogue_language: str,
+    gender_preferences: Optional[str],
+    character_profiles: Optional[Path],
+    interactive_voices: bool,
+    preview_only: bool,
+    dialogue_quality: str,
+    use_dialogue_api: bool,
+    create_sample_profiles: bool,
+    voice_mapping: Optional[str],
+    api_key: Optional[str],
+    verbose: bool
+) -> None:
+    """Handle dialogue generation mode"""
+    from .workflows.dialogue_workflow import DialogueWorkflow
+    from .utils.config import Config
+    import json
+    
+    # Validate input file for dialogue mode
+    if input_file is None:
+        click.echo("❌ Error: Transcript file is required for dialogue mode.", err=True)
+        click.echo("Usage: python -m src.main transcript.txt -p elevenlabs --mode dialogue", err=True)
+        sys.exit(1)
+    
+    if not input_file.exists():
+        click.echo(f"❌ Error: Transcript file '{input_file}' does not exist.", err=True)
+        sys.exit(1)
+    
+    # Initialize configuration for dialogue workflow
+    config = Config(quality='high', output_format='mp4', verbose=verbose)
+    config.elevenlabs_api_key = api_key
+    
+    # Create dialogue workflow
+    try:
+        workflow = DialogueWorkflow(config)
+        if not workflow._check_components():
+            click.echo("❌ Error: Dialogue workflow components not initialized.", err=True)
+            click.echo("Make sure you have a valid ElevenLabs API key.", err=True)
+            sys.exit(1)
+    except Exception as e:
+        click.echo(f"❌ Error initializing dialogue workflow: {e}", err=True)
+        sys.exit(1)
+    
+    # Handle sample profiles creation
+    if create_sample_profiles:
+        profiles_file = output_dir / "sample_character_profiles.json"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        if workflow.create_sample_character_profiles(profiles_file, dialogue_language):
+            click.echo(f"✅ Sample character profiles created: {profiles_file}")
+        else:
+            click.echo("❌ Failed to create sample character profiles", err=True)
+        return
+    
+    # Parse gender preferences if provided
+    parsed_gender_prefs = None
+    if gender_preferences:
+        try:
+            parsed_gender_prefs = json.loads(gender_preferences)
+        except json.JSONDecodeError as e:
+            click.echo(f"❌ Error: Invalid gender preferences JSON: {e}", err=True)
+            sys.exit(1)
+    
+    # Parse voice mapping if provided
+    parsed_voice_mapping = None
+    if voice_mapping and voice_mapping != "auto":
+        try:
+            parsed_voice_mapping = json.loads(voice_mapping)
+        except json.JSONDecodeError as e:
+            click.echo(f"❌ Error: Invalid voice mapping JSON: {e}", err=True)
+            sys.exit(1)
+    
+    if verbose:
+        click.echo(f"🎭 Dialogue Generation Mode")
+        click.echo(f"📄 Input: {input_file}")
+        click.echo(f"📁 Output: {output_dir}")
+        click.echo(f"🌍 Language: {dialogue_language}")
+        click.echo(f"⚡ Quality: {dialogue_quality}")
+        click.echo(f"🔧 Use Dialogue API: {use_dialogue_api}")
+        if parsed_gender_prefs:
+            click.echo(f"👥 Gender preferences: {parsed_gender_prefs}")
+    
+    # Handle interactive voice assignment
+    if interactive_voices:
+        click.echo("🎭 Starting interactive voice assignment...")
+        try:
+            interactive_mapping = workflow.interactive_voice_assignment(
+                input_file, dialogue_language
+            )
+            if interactive_mapping:
+                # Merge with existing voice mapping
+                if parsed_voice_mapping:
+                    parsed_voice_mapping.update(interactive_mapping)
+                else:
+                    parsed_voice_mapping = interactive_mapping
+            else:
+                click.echo("❌ Interactive voice assignment cancelled", err=True)
+                return
+        except KeyboardInterrupt:
+            click.echo("\n❌ Interactive voice assignment cancelled", err=True)
+            return
+        except Exception as e:
+            click.echo(f"❌ Error in interactive voice assignment: {e}", err=True)
+            return
+    
+    # Handle preview mode
+    if preview_only:
+        click.echo("👀 Generating dialogue preview...")
+        try:
+            preview = workflow.preview_dialogue_generation(
+                input_file, dialogue_language, parsed_voice_mapping
+            )
+            
+            if 'error' in preview:
+                click.echo(f"❌ Preview error: {preview['error']}", err=True)
+                return
+            
+            # Display preview information
+            click.echo("\n📊 Dialogue Preview:")
+            click.echo(f"Total segments: {preview['total_segments']}")
+            click.echo(f"Preview segments: {preview['preview_count']}")
+            
+            cost_est = preview['cost_estimate']
+            click.echo(f"\n💰 Cost Estimate:")
+            click.echo(f"Characters: {cost_est['total_characters']}")
+            click.echo(f"Estimated cost: ${cost_est['estimated_cost_usd']}")
+            click.echo(f"Estimated time: {cost_est['estimated_time_minutes']} minutes")
+            
+            click.echo(f"\n🎭 Preview Segments:")
+            for i, seg in enumerate(preview['preview_segments'], 1):
+                click.echo(f"  {i}. {seg['speaker_id']} -> {seg['voice_id']}")
+                click.echo(f"     Text: {seg['text']}")
+                if seg['duration']:
+                    click.echo(f"     Duration: {seg['duration']:.1f}s")
+                click.echo()
+            
+            if 'voice_compatibility' in preview:
+                compat = preview['voice_compatibility']
+                click.echo(f"🔍 Voice Compatibility:")
+                click.echo(f"Compatible: {compat['compatible']}")
+                click.echo(f"Gender diversity: {compat['gender_diversity']}")
+                if compat.get('recommendations'):
+                    for rec in compat['recommendations']:
+                        click.echo(f"💡 {rec}")
+            
+            return
+            
+        except Exception as e:
+            click.echo(f"❌ Error generating preview: {e}", err=True)
+            return
+    
+    # Run full dialogue workflow
+    click.echo("🎵 Running dialogue generation workflow...")
+    try:
+        results = workflow.run_stt_to_dialogue_workflow(
+            transcript_file=input_file,
+            output_dir=output_dir,
+            language=dialogue_language,
+            custom_voice_mapping=parsed_voice_mapping,
+            gender_preferences=parsed_gender_prefs,
+            use_character_profiles=character_profiles is not None,
+            character_profiles_file=character_profiles
+        )
+        
+        # Display results
+        if results['success']:
+            click.echo("✅ Dialogue generation completed!")
+            
+            stats = results.get('statistics', {})
+            if stats:
+                basic_stats = stats.get('basic_stats', {})
+                click.echo(f"📊 Processed {basic_stats.get('total_segments', 0)} segments")
+                click.echo(f"👥 {basic_stats.get('unique_speakers', 0)} speakers")
+                click.echo(f"🔤 {basic_stats.get('total_words', 0)} words")
+            
+            click.echo("\n📁 Generated Files:")
+            for file_type, file_path in results.get('files_generated', {}).items():
+                click.echo(f"  {file_type}: {file_path}")
+            
+            if 'cost_estimate' in results:
+                cost_est = results['cost_estimate']
+                click.echo(f"\n💰 Cost: ${cost_est['estimated_cost_usd']}")
+            
+            api_status = results.get('api_status', {})
+            if not api_status.get('available', False):
+                click.echo(f"\n⚠️  API Status: {api_status.get('status', 'Unknown')}")
+        else:
+            click.echo("❌ Dialogue generation failed!")
+            for error in results.get('errors', []):
+                click.echo(f"  Error: {error}")
+            sys.exit(1)
+            
+    except Exception as e:
+        click.echo(f"❌ Error in dialogue workflow: {e}", err=True)
         if verbose:
             import traceback
             traceback.print_exc()
