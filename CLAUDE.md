@@ -198,6 +198,13 @@ The application supports multiple configuration methods:
 - Most Python module files should NOT have shebang lines at all since they are imported, not executed directly
 - Only add shebangs to files that are intended to be executed directly (like main.py or standalone scripts)
 
+### Python in Bash Anti-Pattern
+- **NEVER** wrap or embed Python code inside bash scripts using `python -c` or heredocs
+- **NEVER** use bash for complex logic - bash should only be used for simple script invocation
+- **ALWAYS** create separate Python modules for any logic beyond basic file operations
+- **ALWAYS** make code modular - separate functions into different files/modules for maintainability
+- If you need a bash wrapper, keep it minimal (< 20 lines) and only for environment setup and Python invocation
+
 ### HTTP API Implementation
 - **Direct API calls**: Use HTTP requests instead of SDKs for maximum control and cross-platform compatibility
 - **Full request/response control**: Manage timeouts, retries, headers, and error handling explicitly
