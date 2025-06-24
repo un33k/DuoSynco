@@ -66,7 +66,7 @@ from .video.synchronizer import VideoSynchronizer
               help='Total duration in seconds for TTS mode')
 @click.option('--voice-mapping',
               type=str,
-              help='Voice mapping as JSON string (e.g., \'{"A": "voice-id", "B": "voice-id"}\')')
+              help='Voice mapping as JSON string (e.g., \'{"A": "voice-id", "B": "voice-id"}\') or "auto" to use .env-local')
 @click.option('--tts-workers',
               type=int,
               default=3,
@@ -74,10 +74,21 @@ from .video.synchronizer import VideoSynchronizer
 @click.option('--list-voices',
               is_flag=True,
               help='List available TTS voices and exit')
+@click.option('--show-config',
+              is_flag=True,
+              help='Show current environment configuration and exit')
 @click.option('--tts-quality',
               type=click.Choice(['low', 'medium', 'high', 'ultra']),
               default='high',
               help='TTS quality level (default: high)')
+@click.option('--timing-mode',
+              type=click.Choice(['adaptive', 'strict']),
+              default='adaptive',
+              help='Timing mode: adaptive (adjust for voice speed) or strict (preserve original)')
+@click.option('--gap-duration',
+              type=float,
+              default=0.4,
+              help='Gap between speakers in seconds (default: 0.4)')
 def cli(input_file: Optional[Path],
         output_dir: Path,
         speakers: int,
@@ -95,7 +106,10 @@ def cli(input_file: Optional[Path],
         voice_mapping: Optional[str],
         tts_workers: int,
         list_voices: bool,
-        tts_quality: str):
+        show_config: bool,
+        tts_quality: str,
+        timing_mode: str,
+        gap_duration: float):
     """
     DuoSynco - Sync videos with isolated speaker audio tracks
 
@@ -155,11 +169,27 @@ def cli(input_file: Optional[Path],
             click.echo(f"❌ Error retrieving voices: {e}", err=True)
         return
 
+    # Handle show-config option
+    if show_config:
+        from .utils.env_loader import env
+        env.print_config()
+        
+        # Show voice mapping if available
+        voice_map = env.get_voice_mapping()
+        if voice_map:
+            click.echo("\n🗣️  Voice Mapping:")
+            for speaker, voice_id in voice_map.items():
+                click.echo(f"  {speaker}: {voice_id}")
+        else:
+            click.echo("\n🗣️  No voice mapping configured")
+            click.echo("  Set VOICE_SPEAKER_A and VOICE_SPEAKER_B in .env-local")
+        return
+
     # Handle TTS mode
     if mode == 'tts':
         return handle_tts_mode(
             transcript_file, total_duration, output_dir, api_key,
-            voice_mapping, tts_workers, tts_quality, verbose
+            voice_mapping, tts_workers, tts_quality, timing_mode, gap_duration, verbose
         )
 
     # Validate input file is provided for diarization mode
@@ -300,6 +330,8 @@ def handle_tts_mode(
     voice_mapping: Optional[str],
     tts_workers: int,
     tts_quality: str,
+    timing_mode: str,
+    gap_duration: float,
     verbose: bool
 ) -> None:
     """Handle TTS generation mode"""
@@ -318,14 +350,23 @@ def handle_tts_mode(
         click.echo(f"❌ Error: Transcript file '{transcript_file}' does not exist.", err=True)
         sys.exit(1)
         
-    # Parse voice mapping if provided
+    # Parse voice mapping
     parsed_voice_mapping = None
     if voice_mapping:
-        try:
-            parsed_voice_mapping = json.loads(voice_mapping)
-        except json.JSONDecodeError as e:
-            click.echo(f"❌ Error: Invalid voice mapping JSON: {e}", err=True)
-            sys.exit(1)
+        if voice_mapping.lower() == "auto":
+            # Load from environment
+            from .utils.env_loader import get_voice_mapping
+            parsed_voice_mapping = get_voice_mapping()
+            if not parsed_voice_mapping:
+                click.echo("❌ Error: No voice mapping found in .env-local", err=True)
+                click.echo("💡 Set VOICE_SPEAKER_A and VOICE_SPEAKER_B in .env-local", err=True)
+                sys.exit(1)
+        else:
+            try:
+                parsed_voice_mapping = json.loads(voice_mapping)
+            except json.JSONDecodeError as e:
+                click.echo(f"❌ Error: Invalid voice mapping JSON: {e}", err=True)
+                sys.exit(1)
     
     try:
         # Load transcript segments
@@ -335,6 +376,8 @@ def handle_tts_mode(
             click.echo(f"📄 Loaded {len(transcript_segments)} transcript segments")
             click.echo(f"⏱️  Total duration: {total_duration}s")
             click.echo(f"🎯 TTS quality: {tts_quality}")
+            click.echo(f"⌚ Timing mode: {timing_mode}")
+            click.echo(f"⏸️  Speaker gap: {gap_duration}s")
             if parsed_voice_mapping:
                 click.echo(f"🗣️  Voice mapping: {parsed_voice_mapping}")
         
@@ -346,7 +389,7 @@ def handle_tts_mode(
         output_dir.mkdir(parents=True, exist_ok=True)
         
         # Generate audio tracks
-        click.echo(f"🗣️  Generating {tts_quality} quality TTS audio tracks...")
+        click.echo(f"🗣️  Generating {tts_quality} quality TTS audio tracks ({timing_mode} timing)...")
         result = tts_generator.generate_audio_tracks(
             transcript_segments=transcript_segments,
             total_duration=total_duration,
@@ -354,7 +397,9 @@ def handle_tts_mode(
             base_filename=transcript_file.stem,
             voice_mapping=parsed_voice_mapping,
             max_workers=tts_workers,
-            quality=tts_quality
+            quality=tts_quality,
+            timing_mode=timing_mode,
+            gap_duration=gap_duration
         )
         
         # Display results

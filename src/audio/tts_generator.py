@@ -53,7 +53,9 @@ class TTSAudioGenerator:
         voice_mapping: Optional[Dict[str, str]] = None,
         tts_settings: Optional[Dict[str, Any]] = None,
         max_workers: int = 3,
-        quality: str = "high"
+        quality: str = "high",
+        timing_mode: str = "adaptive",
+        gap_duration: float = 0.4
     ) -> Dict[str, Any]:
         """
         Generate separate audio tracks from transcript segments
@@ -68,6 +70,8 @@ class TTSAudioGenerator:
             tts_settings: Optional TTS generation settings
             max_workers: Maximum number of concurrent TTS requests
             quality: Quality level ('low', 'medium', 'high', 'ultra') - affects model and settings
+            timing_mode: 'adaptive' (adjust timing based on voice speed) or 'strict' (preserve original timing)
+            gap_duration: Gap between speakers in seconds
             
         Returns:
             Dictionary with results:
@@ -100,13 +104,15 @@ class TTSAudioGenerator:
         if tts_settings:
             quality_settings.update(tts_settings)
         
-        # Generate audio tracks
+        # Generate audio tracks with timing options
         tracks = self.tts_provider.generate_tracks_from_transcript(
             transcript_segments=transcript_segments,
             total_duration=total_duration,
             voice_mapping=voice_mapping,
             tts_settings=quality_settings,
-            max_workers=max_workers
+            max_workers=max_workers,
+            timing_mode=timing_mode,
+            gap_duration=gap_duration
         )
         
         # Save tracks as WAV files

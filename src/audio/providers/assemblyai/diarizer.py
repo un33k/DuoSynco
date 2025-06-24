@@ -67,21 +67,20 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
 
     def _get_api_key(self) -> Optional[str]:
         """Get API key from multiple sources"""
-        # Try environment variable
+        # Load from .env.local file first
+        from ....utils.env_loader import get_env
+        
+        # Try environment variable from .env.local
+        api_key = get_env('ASSEMBLYAI_API_KEY')
+        if api_key:
+            return api_key
+
+        # Try direct environment variable (fallback)
         api_key = os.getenv('ASSEMBLYAI_API_KEY')
         if api_key:
             return api_key
 
-        # Try .env file
-        try:
-            with open('.env', 'r', encoding='utf-8') as f:
-                for line in f:
-                    if line.strip().startswith('ASSEMBLYAI_API_KEY='):
-                        return line.strip().split('=', 1)[1].strip('\'"')
-        except FileNotFoundError:
-            pass
-
-        # Try local key file
+        # Try local key file (legacy fallback)
         try:
             with open('assemblyai_key.txt', 'r', encoding='utf-8') as f:
                 return f.read().strip()
