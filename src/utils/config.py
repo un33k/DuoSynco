@@ -22,7 +22,7 @@ class Config:
     output_format: str = 'mp4'  # 'mp4', 'avi', 'mov'
     
     # Voice separation backend
-    backend: str = 'speechbrain'  # 'ffmpeg', 'speechbrain', 'demucs', 'spectral'
+    backend: str = 'speechbrain'  # 'ffmpeg', 'speechbrain', 'demucs', 'spectral', 'whisperx'
     
     # Logging and verbosity
     verbose: bool = False
@@ -68,7 +68,7 @@ class Config:
                            f"Must be one of: {valid_formats}")
         
         # Validate backend setting
-        valid_backends = ['ffmpeg', 'speechbrain', 'demucs', 'spectral']
+        valid_backends = ['ffmpeg', 'speechbrain', 'demucs', 'spectral', 'whisperx']
         if self.backend not in valid_backends:
             raise ValueError(f"Invalid backend setting: {self.backend}. "
                            f"Must be one of: {valid_backends}")
@@ -277,6 +277,13 @@ class Config:
         except ImportError:
             backends['demucs'] = False
         
+        # Check WhisperX
+        try:
+            import whisperx
+            backends['whisperx'] = True
+        except ImportError:
+            backends['whisperx'] = False
+        
         # Spectral is always available (uses basic libraries)
         backends['spectral'] = True
         
@@ -290,7 +297,7 @@ class Config:
         Returns:
             List of valid backend names
         """
-        return ['ffmpeg', 'speechbrain', 'demucs', 'spectral']
+        return ['ffmpeg', 'speechbrain', 'demucs', 'spectral', 'whisperx']
     
     def validate_backend_availability(self) -> bool:
         """

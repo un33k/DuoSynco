@@ -99,7 +99,7 @@ class VoiceIsolator:
         """
         backend = self.config.backend
         
-        if backend in ['speechbrain', 'demucs', 'ffmpeg']:
+        if backend in ['speechbrain', 'demucs', 'ffmpeg', 'whisperx']:
             # Use ML separator for these backends
             return self.ml_separator.separate_with_specific_backend(
                 input_file, speaker_timeline, total_duration, backend

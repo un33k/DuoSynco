@@ -10,3 +10,4 @@ scipy>=1.7.0
 demucs>=4.0.0
 speechbrain>=0.5.0
 spleeter>=2.3.0
+whisperx

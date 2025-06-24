@@ -39,7 +39,7 @@ show_usage() {
     echo "  -s, --speakers N     Number of speakers to separate (default: 2)"
     echo "  -o, --output-dir DIR Output directory (default: ./output)"
     echo "  -q, --quality LEVEL  Quality: low, medium, high (default: medium)"
-    echo "  -b, --backend NAME   Backend: ffmpeg, speechbrain, demucs, spectral (default: speechbrain)"
+    echo "  -b, --backend NAME   Backend: ffmpeg, speechbrain, demucs, spectral, whisperx (default: speechbrain)"
     echo "  -v, --verbose        Enable verbose output"
     echo "  --list-backends      List available backends and exit"
     echo "  -h, --help           Show this help message"
@@ -47,7 +47,7 @@ show_usage() {
     echo "Examples:"
     echo "  $0 sample_data/annunaki.mp3"
     echo "  $0 interview.wav -s 3 -o results -v"
-    echo "  $0 podcast.mp3 --speakers 2 --quality high --backend demucs"
+    echo "  $0 podcast.mp3 --speakers 2 --quality high --backend whisperx"
     echo "  $0 --list-backends"
 }
 

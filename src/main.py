@@ -37,7 +37,7 @@ from .video.synchronizer import VideoSynchronizer
               default='medium',
               help='Processing quality level')
 @click.option('--backend', '-b',
-              type=click.Choice(['ffmpeg', 'speechbrain', 'demucs', 'spectral']),
+              type=click.Choice(['ffmpeg', 'speechbrain', 'demucs', 'spectral', 'whisperx']),
               default='speechbrain',
               help='Voice separation backend (default: speechbrain)')
 @click.option('--list-backends',

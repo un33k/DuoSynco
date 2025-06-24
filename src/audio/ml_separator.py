@@ -46,6 +46,12 @@ try:
 except ImportError:
     LIBROSA_AVAILABLE = False
 
+try:
+    import whisperx
+    WHISPERX_AVAILABLE = True
+except ImportError:
+    WHISPERX_AVAILABLE = False
+
 from ..utils.config import Config
 from .ffmpeg_separator import FFmpegVoiceSeparator
 
@@ -112,7 +118,8 @@ class MLVoiceSeparator:
         """Check if ML separation is available"""
         return self.ffmpeg_separator.is_available() or \
                (SPEECHBRAIN_AVAILABLE and self.speechbrain_model is not None) or \
-               (DEMUCS_AVAILABLE and self.model is not None)
+               (DEMUCS_AVAILABLE and self.model is not None) or \
+               WHISPERX_AVAILABLE
     
     def separate_with_specific_backend(self,
                                      input_file: Path,
@@ -141,6 +148,8 @@ class MLVoiceSeparator:
                 return self._separate_with_speechbrain(input_file, speaker_segments, total_duration)
             elif backend == 'demucs':
                 return self._separate_with_demucs(input_file, speaker_segments, total_duration)
+            elif backend == 'whisperx':
+                return self._separate_with_whisperx(input_file, speaker_segments, total_duration)
             else:
                 if self.config.verbose:
                     print(f"❌ Unknown ML backend: {backend}")
@@ -188,6 +197,80 @@ class MLVoiceSeparator:
             return {}
         
         return self._ml_separate_with_model(input_file, speaker_segments, total_duration, 'demucs')
+    
+    def _separate_with_whisperx(self,
+                               input_file: Path,
+                               speaker_segments: Dict[str, List[Tuple[float, float]]],
+                               total_duration: float) -> Dict[str, Path]:
+        """Separate using WhisperX backend - combines improved diarization with spectral separation"""
+        if not WHISPERX_AVAILABLE:
+            if self.config.verbose:
+                print("❌ WhisperX backend not available")
+            return {}
+        
+        try:
+            # For WhisperX backend, we'll use it to get better diarization first
+            # then apply spectral separation based on those segments
+            from .whisperx_diarizer import WhisperXDiarizer
+            
+            if self.config.verbose:
+                print("🎯 Using WhisperX for enhanced diarization + spectral separation")
+            
+            # Initialize WhisperX diarizer
+            whisperx_diarizer = WhisperXDiarizer(self.config)
+            
+            if not whisperx_diarizer.is_available():
+                if self.config.verbose:
+                    print("❌ WhisperX diarizer not available")
+                return {}
+            
+            # Get improved speaker segments from WhisperX
+            num_speakers = len(speaker_segments)
+            whisperx_segments = whisperx_diarizer.diarize(input_file, num_speakers)
+            
+            if not whisperx_segments:
+                if self.config.verbose:
+                    print("⚠️  WhisperX diarization returned no segments, using original")
+                whisperx_segments_dict = speaker_segments
+            else:
+                # Convert WhisperX segments to our timeline format
+                whisperx_segments_dict = {}
+                for segment in whisperx_segments:
+                    if segment.speaker_id not in whisperx_segments_dict:
+                        whisperx_segments_dict[segment.speaker_id] = []
+                    whisperx_segments_dict[segment.speaker_id].append(
+                        (segment.start_time, segment.end_time)
+                    )
+                
+                if self.config.verbose:
+                    total_whisperx_time = sum(
+                        sum(end - start for start, end in segments) 
+                        for segments in whisperx_segments_dict.values()
+                    )
+                    print(f"🎯 WhisperX found {len(whisperx_segments_dict)} speakers, {total_whisperx_time:.1f}s total")
+            
+            # Now use spectral separation with the improved segments
+            # Import the spectral separation method from the isolator
+            from . import isolator
+            voice_isolator = isolator.VoiceIsolator(self.config)
+            
+            # Use the spectral separation method directly
+            separated_tracks = voice_isolator._fallback_spectral_separation(
+                input_file, whisperx_segments_dict, total_duration
+            )
+            
+            # Cleanup WhisperX models
+            whisperx_diarizer.cleanup()
+            
+            if self.config.verbose:
+                print(f"✅ WhisperX separation completed: {len(separated_tracks)} tracks")
+            
+            return separated_tracks
+            
+        except Exception as e:
+            if self.config.verbose:
+                print(f"❌ WhisperX separation failed: {e}")
+            return {}
     
     def _ml_separate_with_model(self,
                                input_file: Path,

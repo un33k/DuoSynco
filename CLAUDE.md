@@ -4,34 +4,46 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DuoSynco is a Python-based video/audio synchronization tool that separates speakers in video files and creates isolated audio tracks. The tool uses speaker diarization to identify different voices and generates separate video files where each contains only one speaker's audio while maintaining perfect video synchronization.
+DuoSynco is a Python-based video/audio synchronization tool that separates speakers in video files and creates isolated audio tracks. The tool uses AssemblyAI's professional-grade speaker diarization API to identify different voices with high accuracy and generates separate video files where each contains only one speaker's audio while maintaining perfect video synchronization.
 
 ## Development Commands
 
 ### Environment Setup
+
 ```bash
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Create virtual environment (macOS/Linux only)
+python3 -m venv .venv
+source .venv/bin/activate
 
 # Install dependencies
 pip install -e .
 ```
 
 ### Running the Application
+
 ```bash
+# CRITICAL: Always source .zshrc first to load API keys, then activate virtual environment
+source ~/.zshrc && source .venv/bin/activate
+
+# API key should now be available from .zshrc
+# No need to manually export ASSEMBLYAI_API_KEY
+
 # Using Python module
 python -m src.main input_video.mp4 --output-dir ./output
 
-# Using bash script (recommended)
-./scripts/run.sh input_video.mp4 --speakers 2 --quality high --verbose
+# Test with sample audio file
+python -m src.main sample_data/annunaki.mp3 --verbose --speakers 2 --output-dir ./output
 
 # With various options
-./scripts/run.sh interview.mp4 -o results -s 3 -f mp4 -q medium -v
+python -m src.main interview.mp4 -o ./output -s 2 -f mp4 -l en --enhanced-processing -v
 ```
 
 ### Testing
+
 ```bash
+# CRITICAL: Always source .zshrc first to load API keys, then activate virtual environment
+source ~/.zshrc && source .venv/bin/activate
+
 # Run tests (when implemented)
 pytest tests/
 
@@ -40,7 +52,11 @@ pytest --cov=src tests/
 ```
 
 ### Code Quality
+
 ```bash
+# CRITICAL: Always source .zshrc first to load API keys, then activate virtual environment
+source ~/.zshrc && source .venv/bin/activate
+
 # Format code
 black src/ tests/
 
@@ -58,15 +74,18 @@ DuoSynco follows a modular architecture with clear separation of concerns:
 ### Core Components
 
 1. **Audio Processing** (`src/audio/`)
+
    - `diarization.py`: Speaker identification using pyannote.audio
    - `processor.py`: Audio manipulation and format handling
    - `isolator.py`: Creates isolated audio tracks for each speaker
 
 2. **Video Processing** (`src/video/`)
+
    - `processor.py`: Video file operations using MoviePy/FFmpeg
    - `synchronizer.py`: Syncs video with isolated audio tracks
 
 3. **Utilities** (`src/utils/`)
+
    - `config.py`: Configuration management and settings
    - `file_handler.py`: File I/O operations and validation
 
@@ -85,10 +104,14 @@ DuoSynco follows a modular architecture with clear separation of concerns:
 ## Technology Stack
 
 - **Core Language**: Python 3.8+
-- **Audio Processing**: 
-  - `pyannote.audio` for speaker diarization
+- **Speaker Diarization**:
+  - Direct HTTP API calls to AssemblyAI for maximum control
+  - `requests` library for cross-platform HTTP communication
+  - Provider pattern supporting multiple services (AssemblyAI, future ElevenLabs)
+- **Audio Processing**:
   - `librosa` for audio analysis
   - `pydub` for audio manipulation
+  - `soundfile` for audio I/O
 - **Video Processing**:
   - `moviepy` for video operations
   - `FFmpeg` for advanced video/audio processing
@@ -131,6 +154,7 @@ The application supports multiple configuration methods:
 4. **Default values**
 
 ### Key Settings
+
 - `quality`: Processing quality (low/medium/high)
 - `output_format`: Video format (mp4/avi/mov)
 - `verbose`: Enable detailed logging
@@ -140,25 +164,51 @@ The application supports multiple configuration methods:
 ## Dependencies
 
 ### Required
+
 - `click`: CLI framework
+- `requests`: HTTP API client for cross-platform compatibility
+- `numpy`: Numerical computing
+- `soundfile`: Audio I/O operations
 - `librosa`: Audio analysis
 - `pydub`: Audio manipulation
 - `moviepy`: Video processing
-- `pyannote.audio`: Speaker diarization
-- `torch`: Deep learning backend
 
 ### Optional but Recommended
+
 - `FFmpeg`: Advanced video/audio processing (install separately)
-- `soundfile`: Audio I/O (comes with librosa)
+- `pytest`: Testing framework
+- `black`: Code formatting
+- `flake8`: Code linting
 
 ## Development Notes
 
+- **Environment Setup**: **ALWAYS** run `source ~/.zshrc && source .venv/bin/activate` before any Python commands to load API keys and activate virtual environment
 - **Performance**: Large video files may require significant memory and processing time
 - **Quality**: Higher quality settings increase processing time but improve output
 - **Format Support**: Supports common video formats (mp4, avi, mov, mkv) and audio formats (mp3, wav, aac)
 - **Error Handling**: Comprehensive error handling with fallback methods
 - **Temporary Files**: Uses system temp directory with automatic cleanup
 - **Threading**: Currently single-threaded, but architecture supports future multi-threading
+
+## Coding Standards
+
+### Python Shebang Lines
+- **NEVER** use `#!/usr/bin/env python3` in any Python files within this project
+- For executable Python scripts that need a shebang, use `#!/usr/bin/env python` which will point to the virtual environment's Python interpreter
+- Most Python module files should NOT have shebang lines at all since they are imported, not executed directly
+- Only add shebangs to files that are intended to be executed directly (like main.py or standalone scripts)
+
+### HTTP API Implementation
+- **Direct API calls**: Use HTTP requests instead of SDKs for maximum control and cross-platform compatibility
+- **Full request/response control**: Manage timeouts, retries, headers, and error handling explicitly
+- **Minimal dependencies**: Only rely on `requests` library for HTTP communication
+- **Debugging transparency**: Easy to inspect and log all API interactions
+- **Provider independence**: Each provider implements its own HTTP client without shared SDK dependencies
+
+### Claude Code Execution
+- **For Claude Code**: ALWAYS run `source ~/.zshrc && source .venv/bin/activate &&` before any Python command
+- This ensures API keys from .zshrc are loaded AND virtual environment is activated
+- Example: `source ~/.zshrc && source .venv/bin/activate && python -m src.main --list-providers`
 
 ## Troubleshooting
 
