@@ -259,6 +259,23 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
             logger.error("❌ Diarization failed: %s", e)
             raise
 
+    def _map_speakers_chronologically(self, utterances: List[Dict]) -> Dict[str, str]:
+        """Map original speaker IDs to chronological IDs (speaker_0, speaker_1, etc.)"""
+        # Sort utterances by start time to find chronological speaker order
+        sorted_utterances = sorted(utterances, key=lambda u: u.get('start', 0))
+        
+        speaker_mapping = {}
+        speaker_counter = 0
+        
+        for utterance in sorted_utterances:
+            original_speaker = utterance.get('speaker')
+            if original_speaker and original_speaker not in speaker_mapping:
+                speaker_mapping[original_speaker] = f"speaker_{speaker_counter}"
+                speaker_counter += 1
+        
+        logger.info("📊 Chronological speaker mapping: %s", speaker_mapping)
+        return speaker_mapping
+
     def _basic_separation(
         self,
         utterances: List[Dict],
@@ -266,17 +283,26 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         sample_rate: int
     ) -> Dict[str, np.ndarray]:
         """Basic speaker separation without post-processing"""
-        speakers = set(u.get('speaker') for u in utterances if u.get('speaker'))
+        # Map speakers chronologically
+        speaker_mapping = self._map_speakers_chronologically(utterances)
+        
+        # Create tracks using chronological speaker IDs
         speaker_tracks = {
-            speaker: np.zeros_like(audio_data) for speaker in speakers
+            mapped_id: np.zeros_like(audio_data) 
+            for mapped_id in speaker_mapping.values()
         }
 
         for utterance in utterances:
-            speaker = utterance.get('speaker')
+            original_speaker = utterance.get('speaker')
             start_ms = utterance.get('start', 0)
             end_ms = utterance.get('end', 0)
 
-            if not speaker or start_ms >= end_ms:
+            if not original_speaker or start_ms >= end_ms:
+                continue
+
+            # Use mapped speaker ID
+            mapped_speaker = speaker_mapping.get(original_speaker)
+            if not mapped_speaker:
                 continue
 
             start_sample = int((start_ms / 1000.0) * sample_rate)
@@ -286,7 +312,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
             end_sample = min(len(audio_data), end_sample)
 
             if start_sample < end_sample:
-                speaker_tracks[speaker][start_sample:end_sample] = \
+                speaker_tracks[mapped_speaker][start_sample:end_sample] = \
                     audio_data[start_sample:end_sample]
 
         return speaker_tracks
@@ -300,9 +326,13 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         """Enhanced speaker separation with voice bleed-through reduction"""
         logger.info("Applying enhanced voice separation techniques...")
 
-        speakers = set(u.get('speaker') for u in utterances if u.get('speaker'))
+        # Map speakers chronologically
+        speaker_mapping = self._map_speakers_chronologically(utterances)
+        
+        # Create tracks using chronological speaker IDs
         speaker_tracks = {
-            speaker: np.zeros_like(audio_data) for speaker in speakers
+            mapped_id: np.zeros_like(audio_data) 
+            for mapped_id in speaker_mapping.values()
         }
 
         # Sort utterances by start time
@@ -313,12 +343,17 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
 
         # Process each utterance with enhancements
         for utterance in sorted_utterances:
-            speaker = utterance.get('speaker')
+            original_speaker = utterance.get('speaker')
             start_ms = utterance.get('start', 0)
             end_ms = utterance.get('end', 0)
             text = utterance.get('text', '')
 
-            if not speaker or start_ms >= end_ms:
+            if not original_speaker or start_ms >= end_ms:
+                continue
+
+            # Use mapped speaker ID
+            mapped_speaker = speaker_mapping.get(original_speaker)
+            if not mapped_speaker:
                 continue
 
             start_time = start_ms / 1000.0
@@ -329,7 +364,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
             if duration < 0.3 and len(text.split()) <= 2:
                 logger.debug(
                     "Skipping short utterance: %s (%.2fs) - '%s'",
-                    speaker, duration, text
+                    mapped_speaker, duration, text
                 )
                 continue
 
@@ -361,7 +396,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
                     fade_out = np.linspace(1, 0, fade_samples)
                     audio_segment[-fade_samples:] *= fade_out
 
-                speaker_tracks[speaker][start_sample:end_sample] = \
+                speaker_tracks[mapped_speaker][start_sample:end_sample] = \
                     audio_segment
 
         # Cross-talk cleanup
@@ -520,8 +555,15 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
 
         saved_files = []
 
-        # Save audio files
-        for speaker in sorted(speaker_tracks.keys()):
+        # Save audio files in chronological order (speaker_0, speaker_1, etc.)
+        def speaker_sort_key(speaker_id):
+            # Extract number from speaker_0, speaker_1, etc.
+            try:
+                return int(speaker_id.split('_')[1])
+            except (IndexError, ValueError):
+                return 999  # Put non-standard IDs at the end
+        
+        for speaker in sorted(speaker_tracks.keys(), key=speaker_sort_key):
             non_zero_samples = np.sum(speaker_tracks[speaker] != 0)
             speaker_duration = non_zero_samples / sample_rate
 

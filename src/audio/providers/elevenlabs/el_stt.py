@@ -388,14 +388,18 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
         
         saved_files = []
         
+        # Determine if this is a transitory/debug file (contains "_stt" in base filename)
+        debug_suffix = "_debug" if "_stt" in base_filename and not base_filename.endswith("_final") else ""
+        logger.info(f"📝 File naming: base_filename='{base_filename}', debug_suffix='{debug_suffix}'")
+        
         # Save transcript
-        transcript_file = output_path / f"{base_filename}_elevenlabs_stt_transcript.txt"
+        transcript_file = output_path / f"{base_filename}_elevenlabs_stt_transcript{debug_suffix}.txt"
         with open(transcript_file, 'w', encoding='utf-8') as f:
             f.write(transcript_text)
         saved_files.append(str(transcript_file))
         
         # Save speaker information
-        speakers_file = output_path / f"{base_filename}_elevenlabs_stt_speakers.txt"
+        speakers_file = output_path / f"{base_filename}_elevenlabs_stt_speakers{debug_suffix}.txt"
         with open(speakers_file, 'w', encoding='utf-8') as f:
             f.write("ElevenLabs STT Speaker Analysis\n")
             f.write("=" * 40 + "\n\n")

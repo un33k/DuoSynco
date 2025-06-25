@@ -63,16 +63,21 @@ class AliCommands:
         Returns:
             Exit code
         """
-        print("🎤 Running Speech-to-Text with speaker diarization...")
+        provider = self.config.defaults['provider']
+        print(f"🎤 Running Speech-to-Text with speaker diarization using {provider}...")
         
         args = [
             audio_file,
-            '-p', self.config.defaults['provider'],
-            '--mode', 'edit',
+            '-p', provider,
             '--language', self.config.defaults['language'],
             '--output-dir', self.config.defaults['output_dir'],
-            '--stt-quality', self.config.defaults.get('tts_quality', 'high')
+            '--speakers', '2'  # Default to 2 speakers for diarization
         ] + self._get_common_args()
+        
+        # Only add mode for ElevenLabs (which uses edit mode)
+        if provider == 'elevenlabs':
+            args.extend(['--mode', 'edit'])
+            args.extend(['--stt-quality', self.config.defaults.get('tts_quality', 'high')])
         
         return self._run_duosynco(args)
     

@@ -311,7 +311,10 @@ class STTAudioTranscriber:
         output_path = Path(output_dir)
         output_path.mkdir(exist_ok=True, parents=True)
         
-        json_file = output_path / f"{base_filename}_stt_results.json"
+        # Add debug suffix for transitory STT results files
+        debug_suffix = "_debug" if "_stt" in base_filename and not base_filename.endswith("_final") else ""
+        logger.info(f"📝 JSON file naming: base_filename='{base_filename}', debug_suffix='{debug_suffix}'")
+        json_file = output_path / f"{base_filename}_stt_results{debug_suffix}.json"
         
         # Prepare JSON-serializable data
         json_data = {
