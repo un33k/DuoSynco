@@ -28,9 +28,9 @@ class SpeakerReplacer:
             transcript_editor: Optional existing transcript editor instance
         """
         self.editor = transcript_editor or TranscriptEditor()
-        self.replacement_rules = {}
-        self.speaker_aliases = {}
-        self.forbidden_replacements = set()
+        self.replacement_rules: Dict[str, str] = {}
+        self.speaker_aliases: Dict[str, List[str]] = {}
+        self.forbidden_replacements: Set[str] = set()
 
     def load_replacement_rules(self, rules_file: str) -> None:
         """
@@ -279,7 +279,7 @@ class SpeakerReplacer:
         speakers = [u.get("speaker", "") for u in utterances]
         unique_speakers = set(speakers)
 
-        patterns = {
+        patterns: Dict[str, Any] = {
             "generic_names": [],
             "numbered_speakers": [],
             "case_inconsistencies": {},
@@ -425,7 +425,7 @@ class SpeakerReplacer:
         normalizations = {}
 
         # Group speakers by lowercase version
-        lowercase_groups = {}
+        lowercase_groups: Dict[str, List[str]] = {}
         for speaker in speakers:
             lower = speaker.lower().strip()
             if lower not in lowercase_groups:

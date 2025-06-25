@@ -259,7 +259,7 @@ def cli(
     create_sample_profiles: bool,
     model_id: Optional[str],
     clone_voices: bool,
-):
+) -> None:
     """
     DuoSynco - Sync videos with isolated speaker audio tracks
 

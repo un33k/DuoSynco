@@ -63,7 +63,7 @@ class DialogueBase:
 
     def __init__(self, segments: Optional[List[DialogueSegment]] = None):
         self.segments = segments or []
-        self.metadata = {}
+        self.metadata: Dict[str, Any] = {}
 
     def add_segment(self, segment: DialogueSegment) -> None:
         """Add a dialogue segment"""

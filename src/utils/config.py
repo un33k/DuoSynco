@@ -53,7 +53,7 @@ class Config:
     num_threads: int = 1  # Number of processing threads
     memory_limit_mb: int = 2048  # Memory limit in MB
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Post-initialization validation and setup"""
         self._validate_settings()
         self._setup_temp_directory()

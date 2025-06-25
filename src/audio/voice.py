@@ -42,10 +42,14 @@ def get_default_voice_mapping() -> Dict[str, str]:
         Dictionary with default ElevenLabs voice IDs
     """
     return {
-        "speaker_0": get_env("VOICE_SPEAKER_0", default="N2lVS1w4EtoT3dr4eOWO"),
-        "speaker_1": get_env("VOICE_SPEAKER_1", default="Xb7hH8MSUJpSbSDYk0k2"),
-        "A": get_env("VOICE_SPEAKER_0", default="N2lVS1w4EtoT3dr4eOWO"),  # Backwards compatibility
-        "B": get_env("VOICE_SPEAKER_1", default="Xb7hH8MSUJpSbSDYk0k2"),  # Backwards compatibility
+        "speaker_0": get_env("VOICE_SPEAKER_0", default="N2lVS1w4EtoT3dr4eOWO")
+        or "N2lVS1w4EtoT3dr4eOWO",
+        "speaker_1": get_env("VOICE_SPEAKER_1", default="Xb7hH8MSUJpSbSDYk0k2")
+        or "Xb7hH8MSUJpSbSDYk0k2",
+        "A": get_env("VOICE_SPEAKER_0", default="N2lVS1w4EtoT3dr4eOWO")
+        or "N2lVS1w4EtoT3dr4eOWO",  # Backwards compatibility
+        "B": get_env("VOICE_SPEAKER_1", default="Xb7hH8MSUJpSbSDYk0k2")
+        or "Xb7hH8MSUJpSbSDYk0k2",  # Backwards compatibility
     }
 
 

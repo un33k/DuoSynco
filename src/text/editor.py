@@ -20,12 +20,12 @@ class TranscriptEditor:
     Supports loading, editing, speaker replacement, and saving transcripts
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize transcript editor"""
-        self.transcript_data = None
-        self.original_data = None
-        self.edit_history = []
-        self.current_file = None
+        self.transcript_data: Optional[Dict[str, Any]] = None
+        self.original_data: Optional[Dict[str, Any]] = None
+        self.edit_history: List[Dict[str, Any]] = []
+        self.current_file: Optional[str] = None
 
     def load_transcript(self, file_path: str, format: str = "auto") -> Dict[str, Any]:
         """
@@ -41,19 +41,19 @@ class TranscriptEditor:
         if not Path(file_path).exists():
             raise FileNotFoundError(f"Transcript file not found: {file_path}")
 
-        self.current_file = file_path
-        file_path = Path(file_path)
+        self.current_file = str(file_path)
+        file_path_obj = Path(file_path)
 
         # Auto-detect format
         if format == "auto":
-            format = self._detect_format(file_path)
+            format = self._detect_format(file_path_obj)
 
         logger.info("Loading transcript: %s (format: %s)", file_path, format)
 
         if format == "json":
-            self.transcript_data = self._load_json_transcript(file_path)
+            self.transcript_data = self._load_json_transcript(file_path_obj)
         elif format == "txt":
-            self.transcript_data = self._load_text_transcript(file_path)
+            self.transcript_data = self._load_text_transcript(file_path_obj)
         else:
             raise ValueError(f"Unsupported format: {format}")
 
@@ -93,23 +93,23 @@ class TranscriptEditor:
                 raise ValueError("No file path specified and no current file")
             file_path = self.current_file
 
-        file_path = Path(file_path)
+        file_path_obj = Path(file_path)
 
         # Backup original if requested
-        if backup_original and file_path.exists():
-            backup_path = file_path.with_suffix(
-                f".backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}{file_path.suffix}"
+        if backup_original and file_path_obj.exists():
+            backup_path = file_path_obj.with_suffix(
+                f".backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}{file_path_obj.suffix}"
             )
             logger.info("Creating backup: %s", backup_path)
             import shutil
 
-            shutil.copy2(file_path, backup_path)
+            shutil.copy2(file_path_obj, backup_path)
 
         # Save in requested format
         if format == "json":
-            self._save_json_transcript(file_path)
+            self._save_json_transcript(file_path_obj)
         elif format == "txt":
-            self._save_text_transcript(file_path)
+            self._save_text_transcript(file_path_obj)
         else:
             raise ValueError(f"Unsupported format: {format}")
 

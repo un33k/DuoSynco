@@ -4,16 +4,24 @@ Orchestrates the complete STT -> Text Editing -> Voice Assignment -> TTS pipelin
 """
 
 import logging
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, TYPE_CHECKING
 from pathlib import Path
 import json
 
-from ..audio.dialogue import (
-    TranscriptToDialogueConverter,
-    DialogueGenerator,
-    CharacterManager,
-)
-from ..audio.providers.elevenlabs.voice import VoiceManager
+if TYPE_CHECKING:
+    from ..audio.dialogue import (
+        TranscriptToDialogueConverter,
+        DialogueGenerator,
+        CharacterManager,
+    )
+    from ..audio.providers.elevenlabs.voice import VoiceManager
+else:
+    from ..audio.dialogue import (
+        TranscriptToDialogueConverter,
+        DialogueGenerator,
+        CharacterManager,
+    )
+    from ..audio.providers.elevenlabs.voice import VoiceManager
 from ..utils.config import Config
 
 logger = logging.getLogger(__name__)
@@ -32,10 +40,10 @@ class DialogueWorkflow:
             config: Configuration object
         """
         self.config = config
-        self.voice_manager = None
-        self.character_manager = None
-        self.converter = None
-        self.generator = None
+        self.voice_manager: Optional["VoiceManager"] = None
+        self.character_manager: Optional["CharacterManager"] = None
+        self.converter: Optional["TranscriptToDialogueConverter"] = None
+        self.generator: Optional["DialogueGenerator"] = None
 
         # Initialize components if API key available
         if hasattr(config, "elevenlabs_api_key") and config.elevenlabs_api_key:
@@ -103,7 +111,8 @@ class DialogueWorkflow:
             ):
                 if self.config.verbose:
                     print("📋 Loading character profiles...")
-                self.character_manager.load_profiles(character_profiles_file)
+                if self.character_manager is not None:
+                    self.character_manager.load_profiles(character_profiles_file)
                 results["character_profiles_loaded"] = True
 
             # Step 2: Convert transcript to dialogue
@@ -124,16 +133,19 @@ class DialogueWorkflow:
             if self.config.verbose and final_voice_mapping:
                 print(f"🗣️  Using voice mapping: {final_voice_mapping}")
 
-            dialogue = self.converter.convert_transcript_to_dialogue(
-                transcript_source=str(transcript_file),
-                language=language,
-                custom_voice_mapping=final_voice_mapping,
-                gender_preferences=gender_preferences,
-                auto_assign=True,
-            )
+            if self.converter is not None:
+                dialogue = self.converter.convert_transcript_to_dialogue(
+                    transcript_source=str(transcript_file),
+                    language=language,
+                    custom_voice_mapping=final_voice_mapping,
+                    gender_preferences=gender_preferences,
+                    auto_assign=True,
+                )
 
-            # Step 3: Analyze dialogue
-            dialogue_stats = self.converter.analyze_dialogue_complexity(dialogue)
+                # Step 3: Analyze dialogue
+                dialogue_stats = self.converter.analyze_dialogue_complexity(dialogue)
+            else:
+                raise ValueError("Converter not initialized")
             results["statistics"] = dialogue_stats
 
             if self.config.verbose:
