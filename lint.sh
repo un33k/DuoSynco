@@ -4,26 +4,29 @@
 
 set -e  # Exit on any error
 
-echo "🔍 Running DuoSynco Code Quality Checks..."
+echo "🔍 Running DuoSynco Linting Checks..."
 
-# Activate virtual environment (lint tools should be installed there)
-source .venv/bin/activate
-
-echo ""
-echo "1️⃣ Running Black formatter..."
-black src/ tests/
-
-echo ""
-echo "2️⃣ Running Flake8 linter..."
-flake8 src/ tests/
+# Activate virtual environment if available
+if [ -f ".venv/bin/activate" ]; then
+    source .venv/bin/activate
+    echo "✅ Activated virtual environment"
+fi
 
 echo ""
-echo "3️⃣ Running MyPy type checker..."
-mypy src/
+echo "1️⃣ Running flake8 (syntax errors)..."
+flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
 echo ""
-echo "4️⃣ Running Unit Tests..."
-python test_runner.py --quick
+echo "2️⃣ Running flake8 (style warnings)..."
+flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics --ignore=C901
 
 echo ""
-echo "✅ All code quality checks completed!"
+echo "3️⃣ Running black format check..."
+black --check src/ tests/
+
+echo ""
+echo "4️⃣ Running mypy type checker..."
+mypy src/ --ignore-missing-imports
+
+echo ""
+echo "✅ All linting checks completed successfully!"

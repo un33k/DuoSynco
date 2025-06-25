@@ -29,11 +29,11 @@ install-dev: venv
 
 # Run tests
 test:
-	pytest tests/ -v
+	./test.sh
 
 # Run linting
 lint:
-	flake8 src/ tests/
+	./lint.sh
 
 # Format code
 format:
