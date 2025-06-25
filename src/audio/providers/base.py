@@ -22,7 +22,7 @@ class SpeakerDiarizationProvider(ABC):
         audio_file: str,
         speakers_expected: int = 2,
         language: str = "en",
-        enhanced_processing: bool = True
+        enhanced_processing: bool = True,
     ) -> Tuple[Dict[str, np.ndarray], str, List[Dict]]:
         """
         Perform speaker diarization on audio file
@@ -45,7 +45,7 @@ class SpeakerDiarizationProvider(ABC):
         transcript_text: str,
         output_dir: str,
         base_filename: str,
-        sample_rate: int = 24000
+        sample_rate: int = 24000,
     ) -> List[str]:
         """
         Save separated audio files and transcript

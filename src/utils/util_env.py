@@ -32,12 +32,14 @@ def load_env_file(env_file: Optional[str] = None) -> None:
         env_path = project_root / ENV_LOCAL_FILE
     else:
         env_path = project_root / Path(env_file)
-    
+
     if env_path.exists():
         load_dotenv(env_path, override=True)
 
 
-def get_env(key: str, file_path: Optional[str] = None, default: Optional[str] = None) -> Optional[str]:
+def get_env(
+    key: str, file_path: Optional[str] = None, default: Optional[str] = None
+) -> Optional[str]:
     """
     Retrieve an environment variable in this order:
     1. From a specific file if file_path is provided and contains the key
@@ -45,12 +47,12 @@ def get_env(key: str, file_path: Optional[str] = None, default: Optional[str] = 
     3. From .env if exists
     4. From system environment
     5. Return default if not found
-    
+
     Args:
         key: Environment variable key to retrieve
         file_path: Optional specific file path to check first
         default: Default value if key not found anywhere
-        
+
     Returns:
         Environment variable value or default
     """
@@ -62,7 +64,7 @@ def get_env(key: str, file_path: Optional[str] = None, default: Optional[str] = 
         custom_path = Path(file_path)
         if not custom_path.is_absolute():
             custom_path = project_root / custom_path
-            
+
         if custom_path.exists():
             val = dotenv_values(custom_path).get(key)
             if val is not None:
@@ -99,19 +101,20 @@ class EnvConfig:
     Environment configuration object for backwards compatibility
     Delegates voice-related calls to the audio.voice module
     """
-    
+
     @staticmethod
     def get_voice_mapping() -> Dict[str, str]:
         """Get voice mapping - delegates to audio.voice module"""
         from ..audio.voice import get_voice_mapping
+
         return get_voice_mapping()
-    
+
     @staticmethod
     def print_config() -> None:
         """Print current environment configuration"""
         project_root = find_project_root()
         print(f"Project Root: {project_root}")
-        
+
         # Check for environment files
         env_files = DEFAULT_ENV_FILES
         for env_file in env_files:
@@ -120,9 +123,10 @@ class EnvConfig:
                 print(f"✅ Found: {env_file}")
             else:
                 print(f"❌ Missing: {env_file}")
-        
+
         # Show voice mapping
         from ..audio.voice import get_voice_mapping
+
         voice_mapping = get_voice_mapping()
         if voice_mapping:
             print("Voice Mapping:")

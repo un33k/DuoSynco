@@ -59,17 +59,17 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
     def _get_api_key(self) -> Optional[str]:
         """Get API key from multiple sources"""
         # Load from .env.local file first
-        from ....utils.env import get_env
-        
+        from ....utils.util_env import get_env
+
         # Try environment variable with proper priority order
-        api_key = get_env('ASSEMBLYAI_API_KEY')
+        api_key = get_env("ASSEMBLYAI_API_KEY")
         if api_key:
             return api_key
 
         # Try local key file (legacy fallback)
         try:
-            key_file = Path('assemblyai_key.txt')
-            with open(key_file, 'r', encoding='utf-8') as f:
+            key_file = Path("assemblyai_key.txt")
+            with open(key_file, "r", encoding="utf-8") as f:
                 return f.read().strip()
         except FileNotFoundError:
             pass
@@ -87,13 +87,12 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
                 raise ValueError("Invalid AssemblyAI API key")
             logger.warning("Could not validate API key: %s", e)
 
-
     def diarize(
         self,
         audio_file: str,
         speakers_expected: int = 2,
         language: str = "en",
-        enhanced_processing: bool = True
+        enhanced_processing: bool = True,
     ) -> Tuple[Dict[str, np.ndarray], str, List[Dict]]:
         """
         Perform speaker diarization on audio file using AssemblyAI SDK
@@ -117,56 +116,83 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
                 "format_text": True,
                 "speech_model": aai.SpeechModel.best,
             }
-            
+
             # Set language-specific parameters
             if language and language != "auto":
                 config_params["language_code"] = language
                 config_params["language_detection"] = False
-                
+
                 # Disable features not available for non-English languages
                 if language != "en":
-                    logger.info("Disabling advanced features for non-English language: %s", language)
-                    config_params.update({
-                        "sentiment_analysis": False,
-                        "auto_highlights": False,
-                        "disfluencies": False
-                    })
+                    logger.info(
+                        "Disabling advanced features for non-English language: %s",
+                        language,
+                    )
+                    config_params.update(
+                        {
+                            "sentiment_analysis": False,
+                            "auto_highlights": False,
+                            "disfluencies": False,
+                        }
+                    )
                 else:
-                    config_params.update({
-                        "sentiment_analysis": True,
-                        "auto_highlights": True,
-                        "disfluencies": True
-                    })
+                    config_params.update(
+                        {
+                            "sentiment_analysis": True,
+                            "auto_highlights": True,
+                            "disfluencies": True,
+                        }
+                    )
             else:
                 config_params["language_detection"] = True
-                config_params.update({
-                    "sentiment_analysis": True,
-                    "auto_highlights": True,
-                    "disfluencies": True
-                })
-            
+                config_params.update(
+                    {
+                        "sentiment_analysis": True,
+                        "auto_highlights": True,
+                        "disfluencies": True,
+                    }
+                )
+
             # Add domain-specific word boosting for conversation accuracy
             config_params["word_boost"] = [
-                "yeah", "okay", "right", "exactly", "absolutely", "well",
-                "um", "uh", "like", "you know", "I mean", "sort of",
-                "speaker", "person", "voice", "conversation", "dialogue",
-                "Anunnaki", "Mesopotamia", "Sumerian", "Babylonian", "Assyrian"
+                "yeah",
+                "okay",
+                "right",
+                "exactly",
+                "absolutely",
+                "well",
+                "um",
+                "uh",
+                "like",
+                "you know",
+                "I mean",
+                "sort of",
+                "speaker",
+                "person",
+                "voice",
+                "conversation",
+                "dialogue",
+                "Anunnaki",
+                "Mesopotamia",
+                "Sumerian",
+                "Babylonian",
+                "Assyrian",
             ]
             config_params["boost_param"] = aai.WordBoost.high
-            
+
             # Custom spelling for proper nouns and technical terms (dict format)
             config_params["custom_spelling"] = {
                 "anunaki": "Anunnaki",
-                "mesopotamia": "Mesopotamia", 
+                "mesopotamia": "Mesopotamia",
                 "sumerian": "Sumerian",
                 "babylonian": "Babylonian",
                 "assyrian": "Assyrian",
                 "enlil": "Enlil",
                 "enki": "Enki",
                 "inanna": "Inanna",
-                "ishtar": "Ishtar"
+                "ishtar": "Ishtar",
             }
-            
+
             # Create configuration with all parameters at once
             config = aai.TranscriptionConfig(**config_params)
 
@@ -175,14 +201,17 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
             logger.info("   Language: %s", language)
             logger.info("   Speakers Expected: %d", speakers_expected)
             logger.info("   Enhanced Processing: %s", enhanced_processing)
-            logger.info("   Config: Speaker Labels=%s, Speech Model=%s", 
-                       config.speaker_labels, config.speech_model)
+            logger.info(
+                "   Config: Speaker Labels=%s, Speech Model=%s",
+                config.speaker_labels,
+                config.speech_model,
+            )
 
             # Transcribe with SDK (handles upload, submission, and polling automatically)
             transcript = self.transcriber.transcribe(audio_file, config=config)
-            
+
             logger.info("✅ Transcription completed with status: %s", transcript.status)
-            
+
             # Check for errors
             if transcript.status == aai.TranscriptStatus.error:
                 raise RuntimeError(f"Transcription failed: {transcript.error}")
@@ -193,33 +222,38 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
                 logger.info("Found %d speaker utterances", len(transcript.utterances))
                 utterances = [
                     {
-                        'speaker': utt.speaker,
-                        'start': utt.start,
-                        'end': utt.end,
-                        'text': utt.text,
-                        'confidence': getattr(utt, 'confidence', 0.0)
+                        "speaker": utt.speaker,
+                        "start": utt.start,
+                        "end": utt.end,
+                        "text": utt.text,
+                        "confidence": getattr(utt, "confidence", 0.0),
                     }
                     for utt in transcript.utterances
                 ]
             else:
                 raise RuntimeError("No speaker labels found in transcript")
-            
+
             # Apply enhanced boundary detection using word-level timestamps
             if transcript.words:
-                logger.info("Processing %d word-level timestamps for precise boundaries", len(transcript.words))
+                logger.info(
+                    "Processing %d word-level timestamps for precise boundaries",
+                    len(transcript.words),
+                )
                 words = [
                     {
-                        'text': word.text,
-                        'start': word.start,
-                        'end': word.end,
-                        'confidence': word.confidence,
-                        'speaker': getattr(word, 'speaker', None)
+                        "text": word.text,
+                        "start": word.start,
+                        "end": word.end,
+                        "confidence": word.confidence,
+                        "speaker": getattr(word, "speaker", None),
                     }
                     for word in transcript.words
                 ]
                 utterances = self._enhance_speaker_boundaries(utterances, words)
             else:
-                logger.warning("No word-level timestamps available, using basic utterance boundaries")
+                logger.warning(
+                    "No word-level timestamps available, using basic utterance boundaries"
+                )
 
             # Load original audio
             audio_data, sample_rate = sf.read(audio_file)
@@ -235,20 +269,27 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
                 )
 
             # Prepare transcript text
-            transcript_text = transcript.text if transcript.text else self._format_transcript(utterances)
+            transcript_text = (
+                transcript.text
+                if transcript.text
+                else self._format_transcript(utterances)
+            )
 
             # Prepare utterances list for compatibility
             utterances_list = [
                 {
-                    'speaker': u.get('speaker'),
-                    'start': u.get('start', 0) / 1000.0,  # Convert to seconds if needed
-                    'end': u.get('end', 0) / 1000.0,      # Convert to seconds if needed
-                    'text': u.get('text', '')
+                    "speaker": u.get("speaker"),
+                    "start": u.get("start", 0) / 1000.0,  # Convert to seconds if needed
+                    "end": u.get("end", 0) / 1000.0,  # Convert to seconds if needed
+                    "text": u.get("text", ""),
                 }
                 for u in utterances
             ]
 
-            logger.info("✅ Diarization completed successfully with %d speakers", len(speaker_tracks))
+            logger.info(
+                "✅ Diarization completed successfully with %d speakers",
+                len(speaker_tracks),
+            )
             return speaker_tracks, transcript_text, utterances_list
 
         except Exception as e:
@@ -258,40 +299,37 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
     def _map_speakers_chronologically(self, utterances: List[Dict]) -> Dict[str, str]:
         """Map original speaker IDs to chronological IDs (speaker_0, speaker_1, etc.)"""
         # Sort utterances by start time to find chronological speaker order
-        sorted_utterances = sorted(utterances, key=lambda u: u.get('start', 0))
-        
+        sorted_utterances = sorted(utterances, key=lambda u: u.get("start", 0))
+
         speaker_mapping = {}
         speaker_counter = 0
-        
+
         for utterance in sorted_utterances:
-            original_speaker = utterance.get('speaker')
+            original_speaker = utterance.get("speaker")
             if original_speaker and original_speaker not in speaker_mapping:
                 speaker_mapping[original_speaker] = f"speaker_{speaker_counter}"
                 speaker_counter += 1
-        
+
         logger.info("📊 Chronological speaker mapping: %s", speaker_mapping)
         return speaker_mapping
 
     def _basic_separation(
-        self,
-        utterances: List[Dict],
-        audio_data: np.ndarray,
-        sample_rate: int
+        self, utterances: List[Dict], audio_data: np.ndarray, sample_rate: int
     ) -> Dict[str, np.ndarray]:
         """Basic speaker separation without post-processing"""
         # Map speakers chronologically
         speaker_mapping = self._map_speakers_chronologically(utterances)
-        
+
         # Create tracks using chronological speaker IDs
         speaker_tracks = {
-            mapped_id: np.zeros_like(audio_data) 
+            mapped_id: np.zeros_like(audio_data)
             for mapped_id in speaker_mapping.values()
         }
 
         for utterance in utterances:
-            original_speaker = utterance.get('speaker')
-            start_ms = utterance.get('start', 0)
-            end_ms = utterance.get('end', 0)
+            original_speaker = utterance.get("speaker")
+            start_ms = utterance.get("start", 0)
+            end_ms = utterance.get("end", 0)
 
             if not original_speaker or start_ms >= end_ms:
                 continue
@@ -308,41 +346,36 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
             end_sample = min(len(audio_data), end_sample)
 
             if start_sample < end_sample:
-                speaker_tracks[mapped_speaker][start_sample:end_sample] = \
-                    audio_data[start_sample:end_sample]
+                speaker_tracks[mapped_speaker][start_sample:end_sample] = audio_data[
+                    start_sample:end_sample
+                ]
 
         return speaker_tracks
 
     def _enhanced_separation(
-        self,
-        utterances: List[Dict],
-        audio_data: np.ndarray,
-        sample_rate: int
+        self, utterances: List[Dict], audio_data: np.ndarray, sample_rate: int
     ) -> Dict[str, np.ndarray]:
         """Enhanced speaker separation with voice bleed-through reduction"""
         logger.info("Applying enhanced voice separation techniques...")
 
         # Map speakers chronologically
         speaker_mapping = self._map_speakers_chronologically(utterances)
-        
+
         # Create tracks using chronological speaker IDs
         speaker_tracks = {
-            mapped_id: np.zeros_like(audio_data) 
+            mapped_id: np.zeros_like(audio_data)
             for mapped_id in speaker_mapping.values()
         }
 
         # Sort utterances by start time
-        sorted_utterances = sorted(
-            utterances,
-            key=lambda u: u.get('start', 0)
-        )
+        sorted_utterances = sorted(utterances, key=lambda u: u.get("start", 0))
 
         # Process each utterance with enhancements
         for utterance in sorted_utterances:
-            original_speaker = utterance.get('speaker')
-            start_ms = utterance.get('start', 0)
-            end_ms = utterance.get('end', 0)
-            text = utterance.get('text', '')
+            original_speaker = utterance.get("speaker")
+            start_ms = utterance.get("start", 0)
+            end_ms = utterance.get("end", 0)
+            text = utterance.get("text", "")
 
             if not original_speaker or start_ms >= end_ms:
                 continue
@@ -360,7 +393,9 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
             if duration < 0.3 and len(text.split()) <= 2:
                 logger.debug(
                     "Skipping short utterance: %s (%.2fs) - '%s'",
-                    mapped_speaker, duration, text
+                    mapped_speaker,
+                    duration,
+                    text,
                 )
                 continue
 
@@ -392,8 +427,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
                     fade_out = np.linspace(1, 0, fade_samples)
                     audio_segment[-fade_samples:] *= fade_out
 
-                speaker_tracks[mapped_speaker][start_sample:end_sample] = \
-                    audio_segment
+                speaker_tracks[mapped_speaker][start_sample:end_sample] = audio_segment
 
         # Cross-talk cleanup
         self._cleanup_cross_talk(speaker_tracks, sample_rate)
@@ -405,74 +439,85 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
     ) -> List[Dict]:
         """
         Enhance speaker boundaries using word-level timestamps for precise cuts
-        
+
         Args:
             utterances: Original speaker utterances
             words: Word-level timestamps from AssemblyAI
-            
+
         Returns:
             Enhanced utterances with precise word-boundary timing
         """
         logger.info("Enhancing speaker boundaries with word-level precision")
-        
+
         enhanced_utterances = []
-        
+
         for i, utterance in enumerate(utterances):
-            speaker = utterance.get('speaker')
-            start_ms = utterance.get('start', 0)
-            end_ms = utterance.get('end', 0)
-            text = utterance.get('text', '')
-            
+            speaker = utterance.get("speaker")
+            start_ms = utterance.get("start", 0)
+            end_ms = utterance.get("end", 0)
+            text = utterance.get("text", "")
+
             # Find words that belong to this utterance
             utterance_words = [
-                word for word in words
-                if (word.get('start', 0) >= start_ms and 
-                    word.get('end', 0) <= end_ms + 100)  # 100ms tolerance
+                word
+                for word in words
+                if (
+                    word.get("start", 0) >= start_ms
+                    and word.get("end", 0) <= end_ms + 100
+                )  # 100ms tolerance
             ]
-            
+
             if not utterance_words:
                 # Fallback to original timing if no words found
                 enhanced_utterances.append(utterance)
                 continue
-            
+
             # Use first and last word for precise boundaries
-            precise_start = utterance_words[0].get('start', start_ms)
-            precise_end = utterance_words[-1].get('end', end_ms)
-            
+            precise_start = utterance_words[0].get("start", start_ms)
+            precise_end = utterance_words[-1].get("end", end_ms)
+
             # Check for natural speech gaps and eliminate artificial ones
             if i > 0:
                 prev_utterance = enhanced_utterances[-1]
-                prev_end = prev_utterance.get('end', 0)
+                prev_end = prev_utterance.get("end", 0)
                 gap_ms = precise_start - prev_end
-                
+
                 # If gap is very small (< 200ms), eliminate it for seamless transition
                 if gap_ms < 200:
                     logger.debug("Eliminating %dms gap between speakers", gap_ms)
                     precise_start = prev_end
-                    
+
                 # If gap is artificial (exactly 400ms), reduce to natural pause
                 elif 390 <= gap_ms <= 410:  # 400ms ± 10ms tolerance
-                    logger.debug("Converting artificial 400ms gap to natural 100ms pause")
+                    logger.debug(
+                        "Converting artificial 400ms gap to natural 100ms pause"
+                    )
                     precise_start = prev_end + 100
-            
+
             enhanced_utterance = {
-                'speaker': speaker,
-                'start': precise_start,
-                'end': precise_end,
-                'text': text,
-                'word_count': len(utterance_words),
-                'enhanced': True
+                "speaker": speaker,
+                "start": precise_start,
+                "end": precise_end,
+                "text": text,
+                "word_count": len(utterance_words),
+                "enhanced": True,
             }
-            
+
             enhanced_utterances.append(enhanced_utterance)
-            
+
             logger.debug(
                 "Enhanced %s: %.2fs-%.2fs (%d words) - '%s'",
-                speaker, precise_start/1000, precise_end/1000, 
-                len(utterance_words), text[:50]
+                speaker,
+                precise_start / 1000,
+                precise_end / 1000,
+                len(utterance_words),
+                text[:50],
             )
-        
-        logger.info("Enhanced %d utterances with word-level boundaries", len(enhanced_utterances))
+
+        logger.info(
+            "Enhanced %d utterances with word-level boundaries",
+            len(enhanced_utterances),
+        )
         return enhanced_utterances
 
     def _cleanup_cross_talk(
@@ -497,13 +542,11 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
                 if np.max(np.abs(window)) > 0.01:
                     # Check overlap with other speakers
                     for other_speaker in other_speakers:
-                        other_window = speaker_tracks[other_speaker][
-                            i:window_end
-                        ]
+                        other_window = speaker_tracks[other_speaker][i:window_end]
                         if np.max(np.abs(other_window)) > 0.01:
                             # Energy-based resolution
-                            this_energy = np.mean(window ** 2)
-                            other_energy = np.mean(other_window ** 2)
+                            this_energy = np.mean(window**2)
+                            other_energy = np.mean(other_window**2)
 
                             # Reduce quieter speaker
                             if other_energy > this_energy * 1.2:
@@ -514,14 +557,12 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         lines = ["=== ASSEMBLYAI TRANSCRIPT WITH SPEAKER LABELS ===\n"]
 
         for utterance in utterances:
-            speaker = utterance.get('speaker', 'Unknown')
-            start_time = utterance.get('start', 0) / 1000.0
-            end_time = utterance.get('end', 0) / 1000.0
-            text = utterance.get('text', '')
+            speaker = utterance.get("speaker", "Unknown")
+            start_time = utterance.get("start", 0) / 1000.0
+            end_time = utterance.get("end", 0) / 1000.0
+            text = utterance.get("text", "")
 
-            lines.append(
-                f"{speaker} ({start_time:.2f}s-{end_time:.2f}s): {text}"
-            )
+            lines.append(f"{speaker} ({start_time:.2f}s-{end_time:.2f}s): {text}")
 
         return "\n".join(lines)
 
@@ -531,7 +572,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         transcript_text: str,
         output_dir: str,
         base_filename: str,
-        sample_rate: int = 24000
+        sample_rate: int = 24000,
     ) -> List[str]:
         """
         Save separated audio files and transcript
@@ -555,10 +596,10 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         def speaker_sort_key(speaker_id):
             # Extract number from speaker_0, speaker_1, etc.
             try:
-                return int(speaker_id.split('_')[1])
+                return int(speaker_id.split("_")[1])
             except (IndexError, ValueError):
                 return 999  # Put non-standard IDs at the end
-        
+
         for speaker in sorted(speaker_tracks.keys(), key=speaker_sort_key):
             non_zero_samples = np.sum(speaker_tracks[speaker] != 0)
             speaker_duration = non_zero_samples / sample_rate
@@ -571,8 +612,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
                 sf.write(audio_file, speaker_tracks[speaker], sample_rate)
                 saved_files.append(str(audio_file))
                 logger.info(
-                    "Saved %s: %s (%.1fs)",
-                    speaker, audio_file, speaker_duration
+                    "Saved %s: %s (%.1fs)", speaker, audio_file, speaker_duration
                 )
 
         # Save transcript
@@ -580,10 +620,9 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
             output_path / f"{base_filename}_transcript_"
             f"{self.provider_name.lower()}.txt"
         )
-        with open(transcript_file, 'w', encoding='utf-8') as f:
+        with open(transcript_file, "w", encoding="utf-8") as f:
             f.write(transcript_text)
         saved_files.append(str(transcript_file))
 
         logger.info("Saved transcript: %s", transcript_file)
         return saved_files
-

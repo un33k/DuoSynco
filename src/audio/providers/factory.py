@@ -12,16 +12,14 @@ class ProviderFactory:
     """Factory for creating speaker diarization providers"""
 
     AVAILABLE_PROVIDERS = {
-        'assemblyai': AssemblyAIDiarizer,
-        'elevenlabs': ElevenLabsSTTProvider,  # For diarization, use STT provider
-        'elevenlabs-stt': ElevenLabsSTTProvider,
+        "assemblyai": AssemblyAIDiarizer,
+        "elevenlabs": ElevenLabsSTTProvider,  # For diarization, use STT provider
+        "elevenlabs-stt": ElevenLabsSTTProvider,
     }
 
     @classmethod
     def get_provider(
-        cls,
-        provider_name: str,
-        api_key: Optional[str] = None
+        cls, provider_name: str, api_key: Optional[str] = None
     ) -> SpeakerDiarizationProvider:
         """
         Get a speaker diarization provider instance
@@ -39,7 +37,7 @@ class ProviderFactory:
         provider_name_lower = provider_name.lower()
 
         if provider_name_lower not in cls.AVAILABLE_PROVIDERS:
-            available = ', '.join(cls.AVAILABLE_PROVIDERS.keys())
+            available = ", ".join(cls.AVAILABLE_PROVIDERS.keys())
             raise ValueError(
                 f"Provider '{provider_name}' not found. "
                 f"Available providers: {available}"
@@ -63,30 +61,30 @@ class ProviderFactory:
                 # Create with dummy key to test imports
                 provider_instance = provider_class(api_key="test")
                 providers[name] = {
-                    'available': True,
-                    'requires_api_key': provider_instance.requires_api_key,
-                    'name': provider_instance.provider_name
+                    "available": True,
+                    "requires_api_key": provider_instance.requires_api_key,
+                    "name": provider_instance.provider_name,
                 }
             except ImportError as e:
                 providers[name] = {
-                    'available': False,
-                    'requires_api_key': True,
-                    'error': str(e)
+                    "available": False,
+                    "requires_api_key": True,
+                    "error": str(e),
                 }
             except Exception:
                 # Provider might be available but need real API key
                 try:
                     temp_instance = provider_class()
                     providers[name] = {
-                        'available': True,
-                        'requires_api_key': temp_instance.requires_api_key,
-                        'name': temp_instance.provider_name
+                        "available": True,
+                        "requires_api_key": temp_instance.requires_api_key,
+                        "name": temp_instance.provider_name,
                     }
                 except Exception:
                     providers[name] = {
-                        'available': False,
-                        'requires_api_key': True,
-                        'error': 'Cannot instantiate provider'
+                        "available": False,
+                        "requires_api_key": True,
+                        "error": "Cannot instantiate provider",
                     }
 
         return providers

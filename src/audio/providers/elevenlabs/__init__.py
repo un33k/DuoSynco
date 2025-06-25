@@ -7,4 +7,4 @@ STT Provider: Transcribes audio/video files with speaker diarization using Eleve
 from .tts import ElevenLabsTTSProvider
 from .stt import ElevenLabsSTTProvider
 
-__all__ = ['ElevenLabsTTSProvider', 'ElevenLabsSTTProvider']
+__all__ = ["ElevenLabsTTSProvider", "ElevenLabsSTTProvider"]

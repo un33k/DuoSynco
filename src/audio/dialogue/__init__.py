@@ -10,11 +10,11 @@ from .profile import CharacterProfile, CharacterManager
 from .test import DialogueTester
 
 __all__ = [
-    'DialogueBase',
-    'DialogueSegment', 
-    'TranscriptToDialogueConverter',
-    'DialogueGenerator',
-    'CharacterProfile',
-    'CharacterManager',
-    'DialogueTester'
+    "DialogueBase",
+    "DialogueSegment",
+    "TranscriptToDialogueConverter",
+    "DialogueGenerator",
+    "CharacterProfile",
+    "CharacterManager",
+    "DialogueTester",
 ]
