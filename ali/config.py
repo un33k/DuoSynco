@@ -47,8 +47,8 @@ class AliConfig:
     def defaults(self) -> Dict[str, str]:
         """Default configuration values"""
         return {
-            'provider': 'assemblyai',  # Changed default to assemblyai for STT
-            'language': 'en',          # Changed default to English
+            'provider': 'elevenlabs',  # Default provider for STT  
+            'language': 'en',          # Default to English
             'output_dir': str(self.project_root / 'output'),
             'verbose': True,
             'voice_mapping': 'auto',

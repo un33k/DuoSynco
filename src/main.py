@@ -1181,7 +1181,7 @@ def get_all_execution_paths() -> Dict[str, Dict[str, Any]]:
         'elevenlabs': {
             'name': 'ElevenLabs Premium Path',
             'stt_provider': 'elevenlabs-stt',  # When using STT feature
-            'final_provider': 'elevenlabs-stt',  # When using STT feature
+            'final_provider': 'assemblyai',  # Use AssemblyAI for actual audio separation
             'cost_profile': 'Medium ($0.40/hour STT) + High (TTS per character)',
             'features': ['Premium STT quality', 'Speaker diarization', '99 languages', 'Audio events detection', 'Premium voice synthesis', 'Multiple voice options', 'Adaptive timing'],
             'use_case': 'High-quality transcription with detailed analysis OR voice synthesis',
