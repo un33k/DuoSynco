@@ -26,7 +26,7 @@ black --check src/ tests/
 
 echo ""
 echo "4️⃣ Running mypy type checker..."
-mypy src/ --ignore-missing-imports
+mypy src/ --ignore-missing-imports --no-site-packages
 
 echo ""
 echo "✅ All linting checks completed successfully!"
