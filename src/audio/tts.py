@@ -5,9 +5,6 @@ High-level interface for generating audio tracks from transcript segments
 
 import logging
 from typing import Dict, List, Optional, Any, Tuple
-from pathlib import Path
-
-from .providers.factory import ProviderFactory
 from .providers.elevenlabs import ElevenLabsTTSProvider
 
 logger = logging.getLogger(__name__)
@@ -35,9 +32,7 @@ class TTSAudioGenerator:
 
         self.provider_name = provider
         self.tts_provider = ElevenLabsTTSProvider(api_key=api_key)
-        logger.info(
-            "TTS generator initialized with %s backend", self.tts_provider.provider_name
-        )
+        logger.info("TTS generator initialized with %s backend", self.tts_provider.provider_name)
 
     def generate_audio_tracks(
         self,
@@ -118,9 +113,7 @@ class TTSAudioGenerator:
         # Get final voice mapping used
         speakers = list(set(seg["speaker"] for seg in transcript_segments))
         if not voice_mapping:
-            voice_mapping = self.tts_provider.voice_manager.create_voice_mapping(
-                speakers
-            )
+            voice_mapping = self.tts_provider.voice_manager.create_voice_mapping(speakers)
 
         # Calculate statistics
         stats = self._calculate_stats(tracks, transcript_segments)
@@ -239,9 +232,7 @@ class TTSAudioGenerator:
         Returns:
             Mapping dictionary
         """
-        return self.tts_provider.voice_manager.create_voice_mapping(
-            speakers, custom_mapping
-        )
+        return self.tts_provider.voice_manager.create_voice_mapping(speakers, custom_mapping)
 
     @staticmethod
     def create_sample_transcript(

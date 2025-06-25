@@ -4,10 +4,8 @@ Handles video file operations, format conversion, and basic video manipulation
 """
 
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any
+from typing import Dict, Any
 import subprocess
-import tempfile
-import os
 
 try:
     from moviepy.editor import VideoFileClip, AudioFileClip
@@ -94,9 +92,7 @@ class VideoProcessor:
                         audio_stream = stream
 
                 duration = (
-                    float(info["format"]["duration"])
-                    if "duration" in info["format"]
-                    else 0.0
+                    float(info["format"]["duration"]) if "duration" in info["format"] else 0.0
                 )
 
                 return {
@@ -142,9 +138,7 @@ class VideoProcessor:
             if MOVIEPY_AVAILABLE:
                 with VideoFileClip(str(video_path)) as video:
                     if video.audio is not None:
-                        video.audio.write_audiofile(
-                            str(output_path), verbose=False, logger=None
-                        )
+                        video.audio.write_audiofile(str(output_path), verbose=False, logger=None)
                         return True
                     else:
                         if self.config.verbose:
@@ -175,9 +169,7 @@ class VideoProcessor:
                 print(f"❌ Audio extraction failed: {e}")
             return False
 
-    def replace_audio_in_video(
-        self, video_path: Path, audio_path: Path, output_path: Path
-    ) -> bool:
+    def replace_audio_in_video(self, video_path: Path, audio_path: Path, output_path: Path) -> bool:
         """
         Replace the audio track in a video file
 
@@ -199,9 +191,7 @@ class VideoProcessor:
                         elif audio.duration < video.duration:
                             # Loop audio if it's shorter
                             loops_needed = int(video.duration / audio.duration) + 1
-                            audio = audio.loop(n=loops_needed).subclip(
-                                0, video.duration
-                            )
+                            audio = audio.loop(n=loops_needed).subclip(0, video.duration)
 
                         final_video = video.set_audio(audio)
                         final_video.write_videofile(

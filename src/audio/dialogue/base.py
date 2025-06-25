@@ -75,9 +75,7 @@ class DialogueBase:
 
     def get_segments_by_speaker(self, speaker_id: str) -> List[DialogueSegment]:
         """Get all segments for a specific speaker"""
-        return [
-            segment for segment in self.segments if segment.speaker_id == speaker_id
-        ]
+        return [segment for segment in self.segments if segment.speaker_id == speaker_id]
 
     def get_total_duration(self) -> Optional[float]:
         """Calculate total dialogue duration"""
@@ -163,9 +161,7 @@ class DialogueBase:
 
         for speaker in speakers:
             speaker_segments = self.get_segments_by_speaker(speaker)
-            speaker_duration = sum(
-                seg.duration for seg in speaker_segments if seg.duration
-            )
+            speaker_duration = sum(seg.duration for seg in speaker_segments if seg.duration)
             speaker_words = sum(len(seg.text.split()) for seg in speaker_segments)
 
             stats["speakers"][speaker] = {

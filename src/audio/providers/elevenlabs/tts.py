@@ -4,7 +4,6 @@ Generates separate audio tracks from transcript segments using ElevenLabs TTS AP
 """
 
 import os
-import time
 import logging
 from typing import Dict, List, Tuple, Optional, Any
 from pathlib import Path
@@ -12,7 +11,6 @@ import tempfile
 import concurrent.futures
 import threading
 
-import soundfile as sf
 import numpy as np
 from pydub import AudioSegment
 from elevenlabs import ElevenLabs
@@ -43,8 +41,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
         self.api_key = api_key or self._get_api_key()
         if not self.api_key:
             raise ValueError(
-                "ElevenLabs API key not found. "
-                "Set ELEVEN_LABS_API_KEY environment variable"
+                "ElevenLabs API key not found. " "Set ELEVEN_LABS_API_KEY environment variable"
             )
 
         # Initialize the ElevenLabs SDK client
@@ -96,7 +93,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
         """Validate API key by making a test request"""
         try:
             # Use the SDK to validate the API key
-            voices = self.client.voices.get_all()
+            self.client.voices.get_all()
             logger.debug("API key validation successful")
         except Exception as e:
             if "401" in str(e) or "Unauthorized" in str(e):
@@ -139,8 +136,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
                 {
                     k: v
                     for k, v in settings.items()
-                    if k
-                    in ["stability", "similarity_boost", "style", "use_speaker_boost"]
+                    if k in ["stability", "similarity_boost", "style", "use_speaker_boost"]
                 }
             )
             # Extract other parameters
@@ -161,9 +157,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
             logger.info("   Voice: %s", voice_id)
             logger.info("   Model: %s", model_id)
             logger.info("   Output Format: %s", output_format)
-            logger.info(
-                "   Text: '%.100s%s'", text[:100], "..." if len(text) > 100 else ""
-            )
+            logger.info("   Text: '%.100s%s'", text[:100], "..." if len(text) > 100 else "")
             logger.debug("   Voice Settings: %s", voice_settings)
 
             # Use the SDK to generate TTS
@@ -178,12 +172,8 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
             # Collect all audio chunks
             audio_data = b"".join(audio_generator)
 
-            logger.info(
-                "✅ TTS generated successfully (%.1f KB)", len(audio_data) / 1024
-            )
-            logger.debug(
-                "Generated TTS for text: '%.50s...' (voice: %s)", text[:50], voice_id
-            )
+            logger.info("✅ TTS generated successfully (%.1f KB)", len(audio_data) / 1024)
+            logger.debug("Generated TTS for text: '%.50s...' (voice: %s)", text[:50], voice_id)
             return audio_data
 
         except Exception as e:
@@ -222,9 +212,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
             # Clean up temp file
             os.unlink(tmp_file.name)
 
-            logger.debug(
-                "Measured TTS duration: %.2fs for text: '%.30s...'", duration, text[:30]
-            )
+            logger.debug("Measured TTS duration: %.2fs for text: '%.30s...'", duration, text[:30])
             return duration
 
         except Exception as e:
@@ -291,9 +279,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
                     logger.warning("Test %d failed for voice %s", i + 1, voice_id)
 
             except Exception as e:
-                logger.error(
-                    "Error in speed test %d for voice %s: %s", i + 1, voice_id, e
-                )
+                logger.error("Error in speed test %d for voice %s: %s", i + 1, voice_id, e)
                 continue
 
         if successful_tests == 0:
@@ -346,9 +332,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
         chars = len(text)
         predicted_duration = chars / voice_profile["chars_per_second"]
 
-        logger.debug(
-            "Predicted duration: %.2fs for %d chars", predicted_duration, chars
-        )
+        logger.debug("Predicted duration: %.2fs for %d chars", predicted_duration, chars)
         return predicted_duration
 
     def generate_adaptive_timeline(
@@ -372,9 +356,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
         Returns:
             Tuple of (adjusted_segments, total_duration)
         """
-        logger.info(
-            "Generating adaptive timeline for %d segments", len(transcript_segments)
-        )
+        logger.info("Generating adaptive timeline for %d segments", len(transcript_segments))
 
         # First pass: Profile voice speeds for all speakers
         voice_profiles = {}
@@ -508,14 +490,12 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
         # Generate adaptive timeline if in adaptive mode
         if timing_mode == "adaptive":
             logger.info("Generating adaptive timeline based on voice speeds...")
-            adjusted_segments, adjusted_total_duration = (
-                self.generate_adaptive_timeline(
-                    transcript_segments,
-                    voice_mapping,
-                    tts_settings,
-                    gap_duration,
-                    timing_mode,
-                )
+            adjusted_segments, adjusted_total_duration = self.generate_adaptive_timeline(
+                transcript_segments,
+                voice_mapping,
+                tts_settings,
+                gap_duration,
+                timing_mode,
             )
             working_segments = adjusted_segments
             working_duration = adjusted_total_duration
@@ -584,9 +564,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
                     return seg_index, AudioSegment.silent(duration=1000)
 
                 # Convert MP3 bytes to AudioSegment
-                with tempfile.NamedTemporaryFile(
-                    suffix=".mp3", delete=False
-                ) as tmp_file:
+                with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
                     tmp_file.write(audio_data)
                     tmp_file.flush()
 
@@ -598,9 +576,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
                 return seg_index, audio_segment
 
             except Exception as e:
-                logger.error(
-                    "Failed to generate audio for segment %d: %s", seg_index, e
-                )
+                logger.error("Failed to generate audio for segment %d: %s", seg_index, e)
                 # Return silence on error
                 duration_ms = int((segment["end"] - segment["start"]) * 1000)
                 return seg_index, AudioSegment.silent(duration=max(duration_ms, 1000))
@@ -624,9 +600,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
                     # Add silence for failed segments
                     segment = transcript_segments[seg_index]
                     duration_ms = int((segment["end"] - segment["start"]) * 1000)
-                    audio_segments[seg_index] = AudioSegment.silent(
-                        duration=max(duration_ms, 1000)
-                    )
+                    audio_segments[seg_index] = AudioSegment.silent(duration=max(duration_ms, 1000))
 
         return audio_segments
 
@@ -647,10 +621,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
 
         # Initialize empty tracks for each speaker
         total_duration_ms = int(total_duration * 1000)
-        tracks = {
-            speaker: AudioSegment.silent(duration=total_duration_ms)
-            for speaker in speakers
-        }
+        tracks = {speaker: AudioSegment.silent(duration=total_duration_ms) for speaker in speakers}
 
         # Process each segment
         for seg_index, segment in enumerate(transcript_segments):
@@ -677,9 +648,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
                 # Pad with silence if too short
                 silence_needed = target_duration_ms - len(audio_segment)
                 # Add silence at the end
-                audio_segment = audio_segment + AudioSegment.silent(
-                    duration=silence_needed
-                )
+                audio_segment = audio_segment + AudioSegment.silent(duration=silence_needed)
 
             # Insert audio into the speaker's track at the correct time
             # Create a track with the audio at the right position
@@ -721,9 +690,7 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
         saved_files = []
 
         for speaker, track in tracks.items():
-            audio_file = (
-                output_path / f"{base_filename}_{speaker.lower()}_elevenlabs_tts.wav"
-            )
+            audio_file = output_path / f"{base_filename}_{speaker.lower()}_elevenlabs_tts.wav"
 
             # Export as WAV
             track.export(str(audio_file), format="wav")

@@ -4,8 +4,7 @@ Handles synchronization between video and isolated audio tracks
 """
 
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any
-import tempfile
+from typing import Optional, Dict, Any
 import subprocess
 
 from .processor import VideoProcessor
@@ -88,25 +87,19 @@ class VideoSynchronizer:
             if self.config.verbose:
                 print("🔄 Trying alignment method...")
 
-            return self._sync_by_alignment(
-                video_path, audio_path, output_path, video_info
-            )
+            return self._sync_by_alignment(video_path, audio_path, output_path, video_info)
 
         except Exception as e:
             if self.config.verbose:
                 print(f"❌ Synchronization method failed: {e}")
             return False
 
-    def _sync_by_replacement(
-        self, video_path: Path, audio_path: Path, output_path: Path
-    ) -> bool:
+    def _sync_by_replacement(self, video_path: Path, audio_path: Path, output_path: Path) -> bool:
         """
         Simple audio replacement - fastest method
         """
         try:
-            return self.video_processor.replace_audio_in_video(
-                video_path, audio_path, output_path
-            )
+            return self.video_processor.replace_audio_in_video(video_path, audio_path, output_path)
         except Exception as e:
             if self.config.verbose:
                 print(f"⚠️  Direct replacement failed: {e}")
@@ -247,9 +240,7 @@ class VideoSynchronizer:
 
         for speaker_id, audio_path in isolated_tracks.items():
             # Generate output path
-            output_name = (
-                f"{original_video.stem}_{speaker_id}.{self.config.output_format}"
-            )
+            output_name = f"{original_video.stem}_{speaker_id}.{self.config.output_format}"
             output_path = output_dir / output_name
 
             if self.config.verbose:
@@ -271,9 +262,7 @@ class VideoSynchronizer:
 
         return synchronized_videos
 
-    def optimize_synchronized_videos(
-        self, synchronized_videos: Dict[str, Path]
-    ) -> Dict[str, Path]:
+    def optimize_synchronized_videos(self, synchronized_videos: Dict[str, Path]) -> Dict[str, Path]:
         """
         Optimize synchronized videos for final output
 
@@ -287,17 +276,13 @@ class VideoSynchronizer:
 
         for speaker_id, video_path in synchronized_videos.items():
             # Create optimized filename
-            optimized_path = (
-                video_path.parent / f"{video_path.stem}_optimized{video_path.suffix}"
-            )
+            optimized_path = video_path.parent / f"{video_path.stem}_optimized{video_path.suffix}"
 
             if self.config.verbose:
                 print(f"⚡ Optimizing {speaker_id}...")
 
             # Optimize the video
-            success = self.video_processor.optimize_video_for_output(
-                video_path, optimized_path
-            )
+            success = self.video_processor.optimize_video_for_output(video_path, optimized_path)
 
             if success:
                 optimized_videos[speaker_id] = optimized_path

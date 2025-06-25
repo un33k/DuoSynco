@@ -242,9 +242,7 @@ class SpeakerReplacer:
                     total_applied += count
                 else:
                     # Count what would be replaced
-                    count = sum(
-                        1 for u in utterances if u.get("speaker") == old_speaker
-                    )
+                    count = sum(1 for u in utterances if u.get("speaker") == old_speaker)
                     applied_replacements[old_speaker] = count
             else:
                 logger.warning(
@@ -372,12 +370,8 @@ class SpeakerReplacer:
         speaker_stats = {}
         for speaker in speakers:
             speaker_utterances = [u for u in utterances if u.get("speaker") == speaker]
-            total_duration = sum(
-                u.get("end", 0) - u.get("start", 0) for u in speaker_utterances
-            )
-            sample_texts = [
-                u.get("text", "")[:50] + "..." for u in speaker_utterances[:3]
-            ]
+            total_duration = sum(u.get("end", 0) - u.get("start", 0) for u in speaker_utterances)
+            sample_texts = [u.get("text", "")[:50] + "..." for u in speaker_utterances[:3]]
 
             speaker_stats[speaker] = {
                 "utterance_count": len(speaker_utterances),
@@ -413,9 +407,7 @@ class SpeakerReplacer:
     def _validate_replacement(self, old_speaker: str, new_speaker: str) -> bool:
         """Validate if a speaker replacement is allowed"""
         if new_speaker in self.forbidden_replacements:
-            logger.warning(
-                "Replacement blocked - '%s' is in forbidden list", new_speaker
-            )
+            logger.warning("Replacement blocked - '%s' is in forbidden list", new_speaker)
             return False
 
         if not new_speaker or not new_speaker.strip():
@@ -423,9 +415,7 @@ class SpeakerReplacer:
             return False
 
         if old_speaker == new_speaker:
-            logger.warning(
-                "Replacement blocked - old and new speaker names are identical"
-            )
+            logger.warning("Replacement blocked - old and new speaker names are identical")
             return False
 
         return True
@@ -522,9 +512,7 @@ class SpeakerReplacer:
 
         return False
 
-    def _find_similar_speaker_names(
-        self, speakers: Set[str]
-    ) -> List[Tuple[str, str, float]]:
+    def _find_similar_speaker_names(self, speakers: Set[str]) -> List[Tuple[str, str, float]]:
         """Find pairs of similar speaker names using edit distance"""
         similar_pairs = []
         speakers_list = list(speakers)

@@ -4,11 +4,9 @@ High-level interface for transcribing audio files with speaker diarization
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from pathlib import Path
-import os
 
-from .providers.factory import ProviderFactory
 from .providers.elevenlabs import ElevenLabsSTTProvider
 
 logger = logging.getLogger(__name__)
@@ -89,7 +87,7 @@ class STTAudioTranscriber:
             base_filename = f"stt_{audio_path.stem}"
 
         # Get quality-based settings
-        quality_settings = self._get_quality_settings(quality)
+        self._get_quality_settings(quality)
 
         # Perform STT transcription with diarization
         speaker_tracks, transcript_text, utterances = self.stt_provider.diarize(
@@ -315,9 +313,7 @@ class STTAudioTranscriber:
 
         # Add debug suffix for transitory STT results files
         debug_suffix = (
-            "_debug"
-            if "_stt" in base_filename and not base_filename.endswith("_final")
-            else ""
+            "_debug" if "_stt" in base_filename and not base_filename.endswith("_final") else ""
         )
         logger.info(
             f"📝 JSON file naming: base_filename='{base_filename}', debug_suffix='{debug_suffix}'"
@@ -449,9 +445,7 @@ class STTAudioTranscriber:
             result["file_size_mb"] = file_size_mb
 
             if file_size > 1024 * 1024 * 1024:  # 1GB
-                result["errors"].append(
-                    f"File size {file_size_mb:.1f}MB exceeds 1GB limit"
-                )
+                result["errors"].append(f"File size {file_size_mb:.1f}MB exceeds 1GB limit")
             else:
                 result["size_ok"] = True
 
@@ -466,9 +460,7 @@ class STTAudioTranscriber:
                 result["errors"].append(f"Unsupported format: {extension}")
 
             # Overall validation
-            result["valid"] = (
-                result["exists"] and result["size_ok"] and result["format_supported"]
-            )
+            result["valid"] = result["exists"] and result["size_ok"] and result["format_supported"]
 
         except Exception as e:
             result["errors"].append(f"Validation error: {str(e)}")

@@ -4,12 +4,11 @@ Orchestrates the complete STT -> Text Editing -> Voice Assignment -> TTS pipelin
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, Optional, Any
 from pathlib import Path
 import json
 
 from ..audio.dialogue import (
-    DialogueBase,
     TranscriptToDialogueConverter,
     DialogueGenerator,
     CharacterManager,
@@ -152,16 +151,12 @@ class DialogueWorkflow:
             results["files_generated"]["dialogue_json"] = str(dialogue_file)
 
             # Save ElevenLabs format
-            elevenlabs_file = (
-                output_dir / f"{transcript_file.stem}_elevenlabs_dialogue.json"
-            )
+            elevenlabs_file = output_dir / f"{transcript_file.stem}_elevenlabs_dialogue.json"
             self.converter.export_for_elevenlabs_dialogue_api(dialogue, elevenlabs_file)
             results["files_generated"]["elevenlabs_format"] = str(elevenlabs_file)
 
             # Save voice mapping
-            voice_mapping_file = (
-                output_dir / f"{transcript_file.stem}_voice_mapping.json"
-            )
+            voice_mapping_file = output_dir / f"{transcript_file.stem}_voice_mapping.json"
             with open(voice_mapping_file, "w") as f:
                 json.dump(dialogue.metadata.get("voice_mapping", {}), f, indent=2)
             results["files_generated"]["voice_mapping"] = str(voice_mapping_file)
@@ -186,9 +181,7 @@ class DialogueWorkflow:
 
                 if self.config.verbose:
                     print(f"💰 Estimated cost: ${cost_estimate['estimated_cost_usd']}")
-                    print(
-                        f"⏱️  Estimated time: {cost_estimate['estimated_time_minutes']} minutes"
-                    )
+                    print(f"⏱️  Estimated time: {cost_estimate['estimated_time_minutes']} minutes")
 
                 # Generate audio
                 audio_success = self.generator.generate_dialogue_with_fallback(
@@ -212,9 +205,7 @@ class DialogueWorkflow:
 
             # Step 7: Save character profiles if created
             if use_character_profiles:
-                profiles_file = (
-                    output_dir / f"{transcript_file.stem}_character_profiles.json"
-                )
+                profiles_file = output_dir / f"{transcript_file.stem}_character_profiles.json"
                 self.character_manager.save_profiles(profiles_file)
                 results["files_generated"]["character_profiles"] = str(profiles_file)
 
@@ -282,9 +273,7 @@ class DialogueWorkflow:
             # Add voice compatibility analysis
             voice_ids = [seg.voice_id for seg in dialogue.segments if seg.voice_id]
             if voice_ids:
-                compatibility = self.voice_manager.analyze_voice_compatibility(
-                    voice_ids
-                )
+                compatibility = self.voice_manager.analyze_voice_compatibility(voice_ids)
                 preview["voice_compatibility"] = compatibility
 
             return preview
@@ -321,7 +310,7 @@ class DialogueWorkflow:
 
         voice_mapping = {}
 
-        print(f"\n🎭 Interactive Voice Assignment")
+        print("\n🎭 Interactive Voice Assignment")
         print(f"Language: {language}")
         print(f"Speakers found: {len(speakers)}")
         print(f"Available voices: {len(available_voices)}")
@@ -357,7 +346,7 @@ class DialogueWorkflow:
                     print("\n❌ Voice assignment cancelled")
                     return {}
 
-        print(f"\n✅ Voice assignment completed!")
+        print("\n✅ Voice assignment completed!")
         print("Final mapping:")
         for speaker, voice_id in voice_mapping.items():
             voice_info = self.voice_manager.get_voice_info(voice_id)
@@ -368,9 +357,7 @@ class DialogueWorkflow:
 
     def _check_components(self) -> bool:
         """Check if workflow components are initialized"""
-        return all(
-            [self.voice_manager, self.character_manager, self.converter, self.generator]
-        )
+        return all([self.voice_manager, self.character_manager, self.converter, self.generator])
 
     def get_workflow_status(self) -> Dict[str, Any]:
         """Get status of workflow components"""
@@ -384,9 +371,7 @@ class DialogueWorkflow:
             and self.config.elevenlabs_api_key is not None,
         }
 
-    def create_sample_character_profiles(
-        self, output_file: Path, language: str = "en"
-    ) -> bool:
+    def create_sample_character_profiles(self, output_file: Path, language: str = "en") -> bool:
         """
         Create sample character profiles for testing
 

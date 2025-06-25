@@ -3,15 +3,13 @@ Dialogue Preview and Testing Functionality
 """
 
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from pathlib import Path
 import json
 import tempfile
 
-from .base import DialogueBase, DialogueSegment
 from .converter import TranscriptToDialogueConverter
 from .generator import DialogueGenerator
-from .profile import CharacterManager
 from ..providers.elevenlabs.voice import VoiceManager
 
 logger = logging.getLogger(__name__)
@@ -83,9 +81,7 @@ class DialogueTester:
             # Additional analysis
             if segments:
                 total_duration = sum(seg.duration for seg in segments if seg.duration)
-                avg_segment_length = sum(
-                    len(seg.text.split()) for seg in segments
-                ) / len(segments)
+                avg_segment_length = sum(len(seg.text.split()) for seg in segments) / len(segments)
 
                 results["analysis"] = {
                     "total_duration": total_duration,
@@ -296,9 +292,7 @@ speaker_0 [13.8s - 17.2s]: Alright, we should probably get started then."""
                 results["dialogue_conversion"] = {
                     "conversion_success": True,
                     "segments_converted": len(dialogue.segments),
-                    "voices_assigned": len(
-                        [seg for seg in dialogue.segments if seg.voice_id]
-                    ),
+                    "voices_assigned": len([seg for seg in dialogue.segments if seg.voice_id]),
                     "missing_voices": dialogue.validate_voice_ids(),
                 }
 
@@ -315,14 +309,10 @@ speaker_0 [13.8s - 17.2s]: Alright, we should probably get started then."""
 
         if parsing_ok and voices_ok and api_ok:
             results["overall_status"] = "excellent"
-            results["recommendations"].append(
-                "All systems operational - dialogue generation ready"
-            )
+            results["recommendations"].append("All systems operational - dialogue generation ready")
         elif parsing_ok and voices_ok:
             results["overall_status"] = "good"
-            results["recommendations"].append(
-                "Dialogue generation available with fallback method"
-            )
+            results["recommendations"].append("Dialogue generation available with fallback method")
             if not api_ok:
                 results["recommendations"].append(
                     "Text to Dialogue API not available - will use individual TTS calls"

@@ -6,7 +6,6 @@ Handles application configuration and settings
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 from pathlib import Path
-import os
 
 
 @dataclass
@@ -22,9 +21,7 @@ class Config:
     output_format: str = "mp4"  # 'mp4', 'avi', 'mov'
 
     # Voice separation backend
-    backend: str = (
-        "speechbrain"  # 'ffmpeg', 'speechbrain', 'demucs', 'spectral', 'whisperx'
-    )
+    backend: str = "speechbrain"  # 'ffmpeg', 'speechbrain', 'demucs', 'spectral', 'whisperx'
 
     # Logging and verbosity
     verbose: bool = False
@@ -67,24 +64,21 @@ class Config:
         valid_qualities = ["low", "medium", "high"]
         if self.quality not in valid_qualities:
             raise ValueError(
-                f"Invalid quality setting: {self.quality}. "
-                f"Must be one of: {valid_qualities}"
+                f"Invalid quality setting: {self.quality}. " f"Must be one of: {valid_qualities}"
             )
 
         # Validate output format
         valid_formats = ["mp4", "avi", "mov"]
         if self.output_format not in valid_formats:
             raise ValueError(
-                f"Invalid output format: {self.output_format}. "
-                f"Must be one of: {valid_formats}"
+                f"Invalid output format: {self.output_format}. " f"Must be one of: {valid_formats}"
             )
 
         # Validate backend setting
         valid_backends = ["ffmpeg", "speechbrain", "demucs", "spectral", "whisperx"]
         if self.backend not in valid_backends:
             raise ValueError(
-                f"Invalid backend setting: {self.backend}. "
-                f"Must be one of: {valid_backends}"
+                f"Invalid backend setting: {self.backend}. " f"Must be one of: {valid_backends}"
             )
 
         # Validate speaker range
@@ -140,8 +134,7 @@ class Config:
             audio_channels=int(get_env("DUOSYNCO_CHANNELS", default="2")),
             num_threads=int(get_env("DUOSYNCO_THREADS", default="1")),
             memory_limit_mb=int(get_env("DUOSYNCO_MEMORY_MB", default="2048")),
-            cleanup_temp_files=get_env("DUOSYNCO_CLEANUP", default="true").lower()
-            == "true",
+            cleanup_temp_files=get_env("DUOSYNCO_CLEANUP", default="true").lower() == "true",
         )
 
     @classmethod
@@ -244,12 +237,8 @@ class Config:
         print(f"  Quality: {self.quality}")
         print(f"  Output Format: {self.output_format}")
         print(f"  Backend: {self.backend}")
-        print(
-            f"  Audio: {self.audio_sample_rate}Hz, {self.audio_channels}ch, {self.audio_bitrate}"
-        )
-        print(
-            f"  Processing: {self.num_threads} thread(s), {self.memory_limit_mb}MB limit"
-        )
+        print(f"  Audio: {self.audio_sample_rate}Hz, {self.audio_channels}ch, {self.audio_bitrate}")
+        print(f"  Processing: {self.num_threads} thread(s), {self.memory_limit_mb}MB limit")
         print(f"  Temp Directory: {self.temp_dir}")
         print(f"  Verbose: {self.verbose}")
 
@@ -284,29 +273,27 @@ class Config:
         try:
             import subprocess
 
-            result = subprocess.run(
-                ["ffmpeg", "-version"], capture_output=True, text=True
-            )
+            result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
             backends["ffmpeg"] = result.returncode == 0
         except Exception:
             backends["ffmpeg"] = False
 
         # Check SpeechBrain
         try:
-            import speechbrain
+            import speechbrain  # noqa: F401
 
             try:
-                from speechbrain.inference import SepformerSeparation
+                from speechbrain.inference import SepformerSeparation  # noqa: F401
             except ImportError:
-                from speechbrain.pretrained import SepformerSeparation
+                from speechbrain.pretrained import SepformerSeparation  # noqa: F401
             backends["speechbrain"] = True
         except ImportError:
             backends["speechbrain"] = False
 
         # Check Demucs
         try:
-            import demucs.separate
-            import demucs.pretrained
+            import demucs.separate  # noqa: F401
+            import demucs.pretrained  # noqa: F401
 
             backends["demucs"] = True
         except ImportError:
@@ -314,7 +301,7 @@ class Config:
 
         # Check WhisperX
         try:
-            import whisperx
+            import whisperx  # noqa: F401
 
             backends["whisperx"] = True
         except ImportError:

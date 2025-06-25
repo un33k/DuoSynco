@@ -6,7 +6,7 @@ Handles loading, editing, and saving transcript files with speaker manipulation 
 import json
 import logging
 import re
-from typing import Dict, List, Optional, Any, Tuple, Union
+from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
 from datetime import datetime
 import copy
@@ -305,9 +305,7 @@ class TranscriptEditor:
 
         return modified_count
 
-    def merge_utterances(
-        self, start_index: int, end_index: int, separator: str = " "
-    ) -> bool:
+    def merge_utterances(self, start_index: int, end_index: int, separator: str = " ") -> bool:
         """
         Merge consecutive utterances from the same speaker
 
@@ -323,11 +321,7 @@ class TranscriptEditor:
             raise ValueError("No transcript data loaded")
 
         utterances = self.transcript_data.get("utterances", [])
-        if (
-            not utterances
-            or start_index >= len(utterances)
-            or end_index >= len(utterances)
-        ):
+        if not utterances or start_index >= len(utterances) or end_index >= len(utterances):
             return False
 
         if start_index >= end_index:
@@ -450,9 +444,7 @@ class TranscriptEditor:
             if new_speaker_id not in speakers:
                 speakers.append(new_speaker_id)
 
-        logger.info(
-            "Split utterance %d into %d parts", utterance_index, len(split_points)
-        )
+        logger.info("Split utterance %d into %d parts", utterance_index, len(split_points))
 
         return True
 
@@ -553,7 +545,7 @@ class TranscriptEditor:
                         return "json"
                     else:
                         return "txt"
-            except:
+            except Exception:
                 return "txt"  # Default to text
 
     def _load_json_transcript(self, file_path: Path) -> Dict[str, Any]:
@@ -581,9 +573,7 @@ class TranscriptEditor:
                 continue
 
             # Try to parse format: "Speaker [X.Xs - Y.Ys]: text"
-            match = re.match(
-                r"^(.+?)\s*\[(\d+\.?\d*)s?\s*-\s*(\d+\.?\d*)s?\]:\s*(.+)$", line
-            )
+            match = re.match(r"^(.+?)\s*\[(\d+\.?\d*)s?\s*-\s*(\d+\.?\d*)s?\]:\s*(.+)$", line)
             if match:
                 speaker = match.group(1).strip()
                 start_time = float(match.group(2))
@@ -622,9 +612,7 @@ class TranscriptEditor:
         with open(file_path, "w", encoding="utf-8") as f:
             f.write("# Edited Transcript\n")
             f.write(f"# Generated: {datetime.now().isoformat()}\n")
-            f.write(
-                f"# Total utterances: {len(self.transcript_data.get('utterances', []))}\n\n"
-            )
+            f.write(f"# Total utterances: {len(self.transcript_data.get('utterances', []))}\n\n")
 
             for utterance in self.transcript_data.get("utterances", []):
                 speaker = utterance.get("speaker", "Unknown")
@@ -643,9 +631,7 @@ class TranscriptEditor:
         }
         self.edit_history.append(edit_record)
 
-    def _adjust_utterance_timing(
-        self, utterance_index: int, old_text: str, new_text: str
-    ) -> None:
+    def _adjust_utterance_timing(self, utterance_index: int, old_text: str, new_text: str) -> None:
         """Adjust utterance timing based on text length change"""
         if not old_text:
             return

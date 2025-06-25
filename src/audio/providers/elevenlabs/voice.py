@@ -42,9 +42,7 @@ class VoiceManager:
         self.api_key = api_key
         self.base_url = base_url
         self.session = requests.Session()
-        self.session.headers.update(
-            {"Accept": "application/json", "xi-api-key": api_key}
-        )
+        self.session.headers.update({"Accept": "application/json", "xi-api-key": api_key})
 
         self._available_voices: Optional[List[Dict]] = None
 
@@ -61,9 +59,7 @@ class VoiceManager:
                 response.raise_for_status()
                 data = response.json()
                 self._available_voices = data.get("voices", [])
-                logger.info(
-                    "Retrieved %d available voices", len(self._available_voices)
-                )
+                logger.info("Retrieved %d available voices", len(self._available_voices))
             except Exception as e:
                 logger.error("Failed to retrieve voices: %s", e)
                 self._available_voices = []
@@ -137,9 +133,7 @@ class VoiceManager:
         logger.info("Voice validation results: %s", validation_results)
         return validation_results
 
-    def get_voice_suggestions(
-        self, gender: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def get_voice_suggestions(self, gender: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get voice suggestions based on criteria
 
@@ -164,9 +158,7 @@ class VoiceManager:
                 labels = voice.get("labels", {})
 
                 # Check if voice matches gender criteria
-                if any(
-                    keyword in voice_name for keyword in gender_keywords.get(gender, [])
-                ):
+                if any(keyword in voice_name for keyword in gender_keywords.get(gender, [])):
                     filtered_voices.append(voice)
                 elif labels.get("gender") == gender:
                     filtered_voices.append(voice)
@@ -300,24 +292,20 @@ class VoiceManager:
                 continue
 
             # Check gender preference
-            preferred_gender = (
-                gender_preferences.get(speaker) if gender_preferences else None
-            )
+            preferred_gender = gender_preferences.get(speaker) if gender_preferences else None
 
             if preferred_gender == "male" and male_voices:
-                voice_mapping[speaker] = male_voices[male_index % len(male_voices)][
-                    "voice_id"
-                ]
+                voice_mapping[speaker] = male_voices[male_index % len(male_voices)]["voice_id"]
                 male_index += 1
             elif preferred_gender == "female" and female_voices:
-                voice_mapping[speaker] = female_voices[
-                    female_index % len(female_voices)
-                ]["voice_id"]
+                voice_mapping[speaker] = female_voices[female_index % len(female_voices)][
+                    "voice_id"
+                ]
                 female_index += 1
             elif neutral_voices:
-                voice_mapping[speaker] = neutral_voices[
-                    neutral_index % len(neutral_voices)
-                ]["voice_id"]
+                voice_mapping[speaker] = neutral_voices[neutral_index % len(neutral_voices)][
+                    "voice_id"
+                ]
                 neutral_index += 1
             elif available_voices:
                 # Fallback to any available voice
@@ -437,9 +425,7 @@ class VoiceManager:
                     raise FileNotFoundError(f"Audio file not found: {audio_file}")
 
                 with open(audio_file, "rb") as f:
-                    files.append(
-                        ("files", (Path(audio_file).name, f.read(), "audio/wav"))
-                    )
+                    files.append(("files", (Path(audio_file).name, f.read(), "audio/wav")))
 
             # Prepare form data
             data = {
@@ -528,9 +514,7 @@ class VoiceManager:
                 voice_mapping[speaker_id] = result["voice_id"]
                 logger.info("Mapped %s -> %s", speaker_id, result["voice_id"])
             else:
-                logger.error(
-                    "Failed to clone voice for %s: %s", speaker_id, result["error"]
-                )
+                logger.error("Failed to clone voice for %s: %s", speaker_id, result["error"])
                 # Fallback to default voice
                 if speaker_id in self.DEFAULT_VOICE_MAPPING:
                     voice_mapping[speaker_id] = self.DEFAULT_VOICE_MAPPING[speaker_id]
@@ -574,10 +558,7 @@ class VoiceManager:
         for voice in voices:
             # Check if this is a cloned voice (has certain characteristics)
             labels = voice.get("labels", {})
-            if (
-                labels.get("source") == "voice_cloning"
-                or "cloned" in voice.get("name", "").lower()
-            ):
+            if labels.get("source") == "voice_cloning" or "cloned" in voice.get("name", "").lower():
                 cloned_voices.append(voice)
 
         return cloned_voices

@@ -5,7 +5,7 @@ Provider factory for speaker diarization services
 from typing import Optional
 from .base import SpeakerDiarizationProvider
 from .assemblyai import AssemblyAIDiarizer
-from .elevenlabs import ElevenLabsTTSProvider, ElevenLabsSTTProvider
+from .elevenlabs import ElevenLabsSTTProvider
 
 
 class ProviderFactory:
@@ -39,8 +39,7 @@ class ProviderFactory:
         if provider_name_lower not in cls.AVAILABLE_PROVIDERS:
             available = ", ".join(cls.AVAILABLE_PROVIDERS.keys())
             raise ValueError(
-                f"Provider '{provider_name}' not found. "
-                f"Available providers: {available}"
+                f"Provider '{provider_name}' not found. " f"Available providers: {available}"
             )
 
         provider_class = cls.AVAILABLE_PROVIDERS[provider_name_lower]

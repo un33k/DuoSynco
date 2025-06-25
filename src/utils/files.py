@@ -93,8 +93,7 @@ class FileHandler:
         """Check if file format is supported"""
         extension = file_path.suffix.lower()
         return (
-            extension in self.SUPPORTED_VIDEO_FORMATS
-            or extension in self.SUPPORTED_AUDIO_FORMATS
+            extension in self.SUPPORTED_VIDEO_FORMATS or extension in self.SUPPORTED_AUDIO_FORMATS
         )
 
     def _is_reasonable_size(self, file_path: Path) -> bool:
@@ -358,9 +357,7 @@ class FileHandler:
 
         return available_mb >= required_with_buffer
 
-    def list_files_in_directory(
-        self, directory: Path, pattern: str = "*"
-    ) -> List[Path]:
+    def list_files_in_directory(self, directory: Path, pattern: str = "*") -> List[Path]:
         """
         List files in directory matching pattern
 
@@ -382,9 +379,7 @@ class FileHandler:
                 print(f"⚠️  Could not list files: {e}")
             return []
 
-    def cleanup_directory(
-        self, directory: Path, keep_files: Optional[List[Path]] = None
-    ) -> None:
+    def cleanup_directory(self, directory: Path, keep_files: Optional[List[Path]] = None) -> None:
         """
         Clean up directory, optionally keeping specific files
 
@@ -407,9 +402,7 @@ class FileHandler:
             if self.config.verbose:
                 print(f"⚠️  Directory cleanup error: {e}")
 
-    def convert_to_mp3(
-        self, source: Path, destination: Path, bitrate: str = "128k"
-    ) -> bool:
+    def convert_to_mp3(self, source: Path, destination: Path, bitrate: str = "128k") -> bool:
         """
         Convert audio file to MP3 format using FFmpeg
 

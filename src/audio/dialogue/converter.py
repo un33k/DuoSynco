@@ -221,7 +221,6 @@ class TranscriptToDialogueConverter:
             # Auto-assign voices for unmapped speakers
             unmapped_speakers = [seg.speaker_id for seg in segments if not seg.voice_id]
             if unmapped_speakers:
-                unique_unmapped = list(set(unmapped_speakers))
                 auto_segments, auto_mapping = self.auto_assign_voices(
                     [seg for seg in segments if not seg.voice_id],
                     language=language,
@@ -368,9 +367,7 @@ class TranscriptToDialogueConverter:
         if all(seg.duration for seg in segments):
             total_duration = sum(seg.duration for seg in segments)
             avg_segment_duration = total_duration / total_segments
-            words_per_minute = (
-                (total_words / total_duration) * 60 if total_duration > 0 else 0
-            )
+            words_per_minute = (total_words / total_duration) * 60 if total_duration > 0 else 0
         else:
             total_duration = None
             avg_segment_duration = None
@@ -382,9 +379,7 @@ class TranscriptToDialogueConverter:
 
         # Language complexity (basic analysis)
         complex_punctuation = sum(
-            1
-            for seg in segments
-            if any(p in seg.text for p in ["...", "--", "()", "[]"])
+            1 for seg in segments if any(p in seg.text for p in ["...", "--", "()", "[]"])
         )
 
         analysis = {
@@ -399,9 +394,7 @@ class TranscriptToDialogueConverter:
                 "avg_segment_duration": (
                     round(avg_segment_duration, 2) if avg_segment_duration else None
                 ),
-                "estimated_wpm": (
-                    round(words_per_minute, 2) if words_per_minute else None
-                ),
+                "estimated_wpm": (round(words_per_minute, 2) if words_per_minute else None),
             },
             "complexity_indicators": {
                 "long_segments": long_segments,

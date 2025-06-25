@@ -29,9 +29,7 @@ class SpeakerDiarizer:
         """
         self.provider_name = provider
         self.diarizer = ProviderFactory.get_provider(provider, api_key)
-        logger.info(
-            "Speaker diarizer initialized with %s backend", self.diarizer.provider_name
-        )
+        logger.info("Speaker diarizer initialized with %s backend", self.diarizer.provider_name)
 
     def separate_speakers(
         self,
@@ -141,9 +139,7 @@ class SpeakerDiarizer:
 
             stats["speakers"][speaker] = {
                 "duration": duration,
-                "coverage": (
-                    (duration / original_duration) * 100 if original_duration > 0 else 0
-                ),
+                "coverage": ((duration / original_duration) * 100 if original_duration > 0 else 0),
             }
             stats["total_speaker_duration"] += duration
 

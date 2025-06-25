@@ -4,12 +4,9 @@ Dialogue Generator with ElevenLabs Text to Dialogue API Integration
 
 import requests
 import logging
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, Optional, Any
 from pathlib import Path
-import json
-import time
-
-from .base import DialogueBase, DialogueSegment
+from .base import DialogueBase
 from ...utils.util_env import get_env
 
 logger = logging.getLogger(__name__)
@@ -20,9 +17,7 @@ class DialogueGenerator:
     Generates audio from dialogue using ElevenLabs Text to Dialogue API
     """
 
-    def __init__(
-        self, api_key: Optional[str] = None, base_url: str = "https://api.elevenlabs.io"
-    ):
+    def __init__(self, api_key: Optional[str] = None, base_url: str = "https://api.elevenlabs.io"):
         """
         Initialize dialogue generator
 
@@ -114,13 +109,9 @@ class DialogueGenerator:
             elif e.response.status_code == 402:
                 raise ValueError("Insufficient credits for dialogue generation")
             elif e.response.status_code == 404:
-                raise ValueError(
-                    "Text to Dialogue API not available - may need alpha access"
-                )
+                raise ValueError("Text to Dialogue API not available - may need alpha access")
             else:
-                raise ValueError(
-                    f"API error {e.response.status_code}: {e.response.text}"
-                )
+                raise ValueError(f"API error {e.response.status_code}: {e.response.text}")
 
         except requests.exceptions.RequestException as e:
             raise ValueError(f"Network error during dialogue generation: {e}")
@@ -159,9 +150,7 @@ class DialogueGenerator:
             else:
                 raise
 
-    def _generate_dialogue_fallback(
-        self, dialogue: DialogueBase, output_file: Path
-    ) -> bool:
+    def _generate_dialogue_fallback(self, dialogue: DialogueBase, output_file: Path) -> bool:
         """
         Fallback method using individual TTS calls and audio concatenation
 
@@ -280,9 +269,7 @@ class DialogueGenerator:
             API availability status
         """
         test_data = {
-            "text": [
-                {"speaker_id": "pNInz6obpgDQGcFmaJgB", "text": "Hello, this is a test."}
-            ],
+            "text": [{"speaker_id": "pNInz6obpgDQGcFmaJgB", "text": "Hello, this is a test."}],
             "model_id": "eleven_v3",
             "output_format": "mp3_44100_128",
         }

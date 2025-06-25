@@ -3,12 +3,9 @@ ElevenLabs Speech-to-Text Provider
 Transcribes audio/video files using ElevenLabs Scribe API with speaker diarization
 """
 
-import os
-import time
 import logging
 from typing import Dict, List, Tuple, Optional, Any
 from pathlib import Path
-import tempfile
 
 import requests
 import numpy as np
@@ -128,9 +125,7 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
         if file_size > 1024 * 1024 * 1024:  # 1GB limit
             raise ValueError(f"File size {file_size/1024/1024:.1f}MB exceeds 1GB limit")
 
-        logger.info(
-            "Transcribing audio file: %s (%.1fMB)", audio_file, file_size / 1024 / 1024
-        )
+        logger.info("Transcribing audio file: %s (%.1fMB)", audio_file, file_size / 1024 / 1024)
 
         url = f"{self.BASE_URL}/speech-to-text"
 
@@ -179,7 +174,7 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
                 try:
                     error_detail = e.response.json()
                     logger.error("API error details: %s", error_detail)
-                except:
+                except Exception:
                     logger.error("Response content: %s", e.response.text)
             raise RuntimeError(f"STT transcription failed: {e}")
 
@@ -255,9 +250,7 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
         transcript_lines = []
         for utterance in utterances:
             timestamp = f"[{utterance['start']:.1f}s - {utterance['end']:.1f}s]"
-            transcript_lines.append(
-                f"{utterance['speaker']} {timestamp}: {utterance['text']}"
-            )
+            transcript_lines.append(f"{utterance['speaker']} {timestamp}: {utterance['text']}")
 
         transcript_text = "\n".join(transcript_lines)
 
@@ -310,13 +303,9 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
                             2
                             * np.pi
                             * 440
-                            * np.linspace(
-                                0, duration_samples / sample_rate, duration_samples
-                            )
+                            * np.linspace(0, duration_samples / sample_rate, duration_samples)
                         )
-                        track[start_sample:end_sample] = marker_signal[
-                            : end_sample - start_sample
-                        ]
+                        track[start_sample:end_sample] = marker_signal[: end_sample - start_sample]
 
             speaker_tracks[speaker] = track
 
@@ -352,9 +341,7 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
         stt_result = self.transcribe_audio(
             audio_file=audio_file,
             model_id=model_id,
-            language_code=(
-                language if language != "en" else None
-            ),  # Auto-detect for English
+            language_code=(language if language != "en" else None),  # Auto-detect for English
             num_speakers=speakers_expected,
             diarize=True,
             tag_audio_events=False,  # Focus on speech
@@ -362,14 +349,10 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
         )
 
         # Convert to standard format
-        utterances, transcript_text, total_duration = (
-            self.convert_to_diarization_format(stt_result)
-        )
+        utterances, transcript_text, total_duration = self.convert_to_diarization_format(stt_result)
 
         # Create placeholder speaker tracks
-        speaker_tracks = self.create_speaker_tracks_from_utterances(
-            utterances, total_duration
-        )
+        speaker_tracks = self.create_speaker_tracks_from_utterances(utterances, total_duration)
 
         logger.info(
             "ElevenLabs STT diarization completed: %d speakers, %.1fs duration",
@@ -408,9 +391,7 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
 
         # Determine if this is a transitory/debug file (contains "_stt" in base filename)
         debug_suffix = (
-            "_debug"
-            if "_stt" in base_filename and not base_filename.endswith("_final")
-            else ""
+            "_debug" if "_stt" in base_filename and not base_filename.endswith("_final") else ""
         )
         logger.info(
             f"📝 File naming: base_filename='{base_filename}', debug_suffix='{debug_suffix}'"
@@ -425,18 +406,14 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
         saved_files.append(str(transcript_file))
 
         # Save speaker information
-        speakers_file = (
-            output_path / f"{base_filename}_elevenlabs_stt_speakers{debug_suffix}.txt"
-        )
+        speakers_file = output_path / f"{base_filename}_elevenlabs_stt_speakers{debug_suffix}.txt"
         with open(speakers_file, "w", encoding="utf-8") as f:
             f.write("ElevenLabs STT Speaker Analysis\n")
             f.write("=" * 40 + "\n\n")
             for speaker_id in speaker_tracks.keys():
                 f.write(f"Speaker: {speaker_id}\n")
                 f.write(f"Track samples: {len(speaker_tracks[speaker_id])}\n")
-                f.write(
-                    f"Duration: {len(speaker_tracks[speaker_id]) / sample_rate:.1f}s\n\n"
-                )
+                f.write(f"Duration: {len(speaker_tracks[speaker_id]) / sample_rate:.1f}s\n\n")
         saved_files.append(str(speakers_file))
 
         logger.info("Saved ElevenLabs STT results: %s", saved_files)

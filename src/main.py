@@ -6,7 +6,11 @@ Main CLI entry point for processing videos with speaker isolation using Assembly
 
 import click
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, List, Dict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .text.editor import TranscriptEditor
+    from .text.replacer import SpeakerReplacer
 import sys
 import logging
 
@@ -53,9 +57,7 @@ VOICE_SAMPLES_DIR = Path("voice_samples")
     default="medium",
     help="Processing quality level",
 )
-@click.option(
-    "--language", "-l", type=str, default="en", help="Audio language code (default: en)"
-)
+@click.option("--language", "-l", type=str, default="en", help="Audio language code (default: en)")
 @click.option(
     "--enhanced-processing",
     is_flag=True,
@@ -70,9 +72,7 @@ VOICE_SAMPLES_DIR = Path("voice_samples")
     help="Primary provider for the operation (determines execution path, cost, and features)",
 )
 @click.option("--api-key", type=str, help="API key for the provider (or set env var)")
-@click.option(
-    "--list-providers", is_flag=True, help="List available providers and exit"
-)
+@click.option("--list-providers", is_flag=True, help="List available providers and exit")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 @click.option(
     "--mode",
@@ -85,9 +85,7 @@ VOICE_SAMPLES_DIR = Path("voice_samples")
     type=click.Path(path_type=Path),
     help="Transcript file for TTS mode (JSON or TXT format)",
 )
-@click.option(
-    "--total-duration", type=float, help="Total duration in seconds for TTS mode"
-)
+@click.option("--total-duration", type=float, help="Total duration in seconds for TTS mode")
 @click.option(
     "--voice-mapping",
     type=str,
@@ -319,9 +317,7 @@ def cli(
                     click.echo(f"  {name} ({gender}): {voice_id}")
 
                 if voices_info["total_voices"] > 10:
-                    click.echo(
-                        f"  ... and {voices_info['total_voices'] - 10} more voices"
-                    )
+                    click.echo(f"  ... and {voices_info['total_voices'] - 10} more voices")
 
                 click.echo("\n🎯 Default Voice Mapping:")
                 for voice_id, info in voices_info["default_voices"].items():
@@ -453,12 +449,8 @@ def cli(
         except ValueError as e:
             click.echo(f"❌ Error: {e}", err=True)
             if provider.lower() == "assemblyai":
-                click.echo(
-                    "💡 Get your API key from: https://www.assemblyai.com/", err=True
-                )
-                click.echo(
-                    "💡 Set it with: export ASSEMBLYAI_API_KEY=your_key", err=True
-                )
+                click.echo("💡 Get your API key from: https://www.assemblyai.com/", err=True)
+                click.echo("💡 Set it with: export ASSEMBLYAI_API_KEY=your_key", err=True)
             sys.exit(1)
 
         # Perform speaker separation
@@ -506,13 +498,9 @@ def cli(
             video_files = []
             for i, audio_file in enumerate(result["speaker_files"]):
                 speaker_name = (
-                    result["speakers"][i]
-                    if i < len(result["speakers"])
-                    else f"speaker_{i+1}"
+                    result["speakers"][i] if i < len(result["speakers"]) else f"speaker_{i+1}"
                 )
-                output_file = (
-                    output_dir / f"{input_file.stem}_{speaker_name.lower()}.{format}"
-                )
+                output_file = output_dir / f"{input_file.stem}_{speaker_name.lower()}.{format}"
 
                 if verbose:
                     click.echo(f"🎬 Creating video: {output_file}")
@@ -570,9 +558,7 @@ def handle_dialogue_mode(
         sys.exit(1)
 
     if not input_file.exists():
-        click.echo(
-            f"❌ Error: Transcript file '{input_file}' does not exist.", err=True
-        )
+        click.echo(f"❌ Error: Transcript file '{input_file}' does not exist.", err=True)
         sys.exit(1)
 
     # Initialize configuration for dialogue workflow
@@ -583,9 +569,7 @@ def handle_dialogue_mode(
     try:
         workflow = DialogueWorkflow(config)
         if not workflow._check_components():
-            click.echo(
-                "❌ Error: Dialogue workflow components not initialized.", err=True
-            )
+            click.echo("❌ Error: Dialogue workflow components not initialized.", err=True)
             click.echo("Make sure you have a valid ElevenLabs API key.", err=True)
             sys.exit(1)
     except Exception as e:
@@ -622,7 +606,7 @@ def handle_dialogue_mode(
             sys.exit(1)
 
     if verbose:
-        click.echo(f"🎭 Dialogue Generation Mode")
+        click.echo("🎭 Dialogue Generation Mode")
         click.echo(f"📄 Input: {input_file}")
         click.echo(f"📁 Output: {output_dir}")
         click.echo(f"🌍 Language: {dialogue_language}")
@@ -672,12 +656,12 @@ def handle_dialogue_mode(
             click.echo(f"Preview segments: {preview['preview_count']}")
 
             cost_est = preview["cost_estimate"]
-            click.echo(f"\n💰 Cost Estimate:")
+            click.echo("\n💰 Cost Estimate:")
             click.echo(f"Characters: {cost_est['total_characters']}")
             click.echo(f"Estimated cost: ${cost_est['estimated_cost_usd']}")
             click.echo(f"Estimated time: {cost_est['estimated_time_minutes']} minutes")
 
-            click.echo(f"\n🎭 Preview Segments:")
+            click.echo("\n🎭 Preview Segments:")
             for i, seg in enumerate(preview["preview_segments"], 1):
                 click.echo(f"  {i}. {seg['speaker_id']} -> {seg['voice_id']}")
                 click.echo(f"     Text: {seg['text']}")
@@ -687,7 +671,7 @@ def handle_dialogue_mode(
 
             if "voice_compatibility" in preview:
                 compat = preview["voice_compatibility"]
-                click.echo(f"🔍 Voice Compatibility:")
+                click.echo("🔍 Voice Compatibility:")
                 click.echo(f"Compatible: {compat['compatible']}")
                 click.echo(f"Gender diversity: {compat['gender_diversity']}")
                 if compat.get("recommendations"):
@@ -720,9 +704,7 @@ def handle_dialogue_mode(
             stats = results.get("statistics", {})
             if stats:
                 basic_stats = stats.get("basic_stats", {})
-                click.echo(
-                    f"📊 Processed {basic_stats.get('total_segments', 0)} segments"
-                )
+                click.echo(f"📊 Processed {basic_stats.get('total_segments', 0)} segments")
                 click.echo(f"👥 {basic_stats.get('unique_speakers', 0)} speakers")
                 click.echo(f"🔤 {basic_stats.get('total_words', 0)} words")
 
@@ -775,9 +757,7 @@ def handle_tts_mode(
         sys.exit(1)
 
     if not transcript_file.exists():
-        click.echo(
-            f"❌ Error: Transcript file '{transcript_file}' does not exist.", err=True
-        )
+        click.echo(f"❌ Error: Transcript file '{transcript_file}' does not exist.", err=True)
         sys.exit(1)
 
     # Parse voice mapping
@@ -790,9 +770,7 @@ def handle_tts_mode(
             parsed_voice_mapping = get_voice_mapping()
             if not parsed_voice_mapping:
                 click.echo("❌ Error: No voice mapping found in .env-local", err=True)
-                click.echo(
-                    "💡 Set VOICE_SPEAKER_A and VOICE_SPEAKER_B in .env-local", err=True
-                )
+                click.echo("💡 Set VOICE_SPEAKER_A and VOICE_SPEAKER_B in .env-local", err=True)
                 sys.exit(1)
         else:
             try:
@@ -833,9 +811,7 @@ def handle_tts_mode(
             # Look for original audio file
             for ext in audio_extensions:
                 possible_path = (
-                    transcript_file.parent.parent
-                    / SAMPLE_DATA_DIR
-                    / f"{base_name}{ext}"
+                    transcript_file.parent.parent / SAMPLE_DATA_DIR / f"{base_name}{ext}"
                 )
                 if possible_path.exists():
                     original_audio = possible_path
@@ -847,8 +823,7 @@ def handle_tts_mode(
                 # Extract speakers from the transcript file
                 speakers = list(
                     set(
-                        seg.get("speaker", seg.get("speaker_id", ""))
-                        for seg in transcript_segments
+                        seg.get("speaker", seg.get("speaker_id", "")) for seg in transcript_segments
                     )
                 )
 
@@ -870,9 +845,7 @@ def handle_tts_mode(
                     # Initialize voice manager and clone voices
                     voice_manager = VoiceManager(api_key)
 
-                    click.echo(
-                        f"🎭 Cloning voices for {len(speaker_samples)} speakers..."
-                    )
+                    click.echo(f"🎭 Cloning voices for {len(speaker_samples)} speakers...")
                     cloned_mapping = voice_manager.clone_voices_from_samples(
                         speaker_samples,
                         language="fa",  # Persian
@@ -934,7 +907,7 @@ def handle_tts_mode(
         for audio_file in result["audio_files"]:
             click.echo(f"  - {audio_file}")
 
-        click.echo(f"\n🗣️  Voice mapping used:")
+        click.echo("\n🗣️  Voice mapping used:")
         for speaker, voice_id in result["voice_mapping"].items():
             click.echo(f"  {speaker}: {voice_id}")
 
@@ -1054,7 +1027,7 @@ def handle_edit_mode(
         output_dir.mkdir(parents=True, exist_ok=True)
 
         if verbose:
-            click.echo(f"🎤 Edit Mode Workflow Starting")
+            click.echo("🎤 Edit Mode Workflow Starting")
             click.echo(f"📁 Input file: {input_file}")
             click.echo(f"📁 Output directory: {output_dir}")
             click.echo(f"🛤️  Execution Path: {execution_path['name']}")
@@ -1071,16 +1044,12 @@ def handle_edit_mode(
         from .audio.stt import STTAudioTranscriber
 
         try:
-            stt_transcriber = STTAudioTranscriber(
-                provider=stt_provider, api_key=api_key
-            )
+            stt_transcriber = STTAudioTranscriber(provider=stt_provider, api_key=api_key)
         except ValueError as e:
             click.echo(f"❌ Error: {e}", err=True)
             if stt_provider.lower() == "elevenlabs-stt":
                 click.echo("💡 Get your API key from: https://elevenlabs.io/", err=True)
-                click.echo(
-                    "💡 Set it with: export ELEVENLABS_API_KEY=your_key", err=True
-                )
+                click.echo("💡 Set it with: export ELEVENLABS_API_KEY=your_key", err=True)
             sys.exit(1)
 
         # Perform STT transcription
@@ -1129,9 +1098,7 @@ def handle_edit_mode(
             total_replaced = sum(replacement_results.values())
 
             if total_replaced > 0:
-                click.echo(
-                    f"✅ Applied speaker replacements: {total_replaced} utterances modified"
-                )
+                click.echo(f"✅ Applied speaker replacements: {total_replaced} utterances modified")
                 for old_speaker, count in replacement_results.items():
                     if count > 0:
                         click.echo(f"  {old_speaker}: {count} utterances")
@@ -1155,9 +1122,7 @@ def handle_edit_mode(
         edited_transcript_file = output_transcript or (
             output_dir / f"{input_file.stem}_edited_transcript.json"
         )
-        editor.save_transcript(
-            str(edited_transcript_file), format="json", backup_original=False
-        )
+        editor.save_transcript(str(edited_transcript_file), format="json", backup_original=False)
 
         click.echo(f"💾 Saved edited transcript: {edited_transcript_file}")
 
@@ -1172,12 +1137,8 @@ def handle_edit_mode(
         except ValueError as e:
             click.echo(f"❌ Error: {e}", err=True)
             if final_provider.lower() == "assemblyai":
-                click.echo(
-                    "💡 Get your API key from: https://www.assemblyai.com/", err=True
-                )
-                click.echo(
-                    "💡 Set it with: export ASSEMBLYAI_API_KEY=your_key", err=True
-                )
+                click.echo("💡 Get your API key from: https://www.assemblyai.com/", err=True)
+                click.echo("💡 Set it with: export ASSEMBLYAI_API_KEY=your_key", err=True)
             sys.exit(1)
 
         # Perform final speaker separation
@@ -1193,9 +1154,7 @@ def handle_edit_mode(
         # Display final results
         click.echo("✅ Edit workflow completed successfully!")
         click.echo("\n📊 Results Summary:")
-        click.echo(
-            f"  🎤 STT Transcription: {len(stt_result['utterances'])} utterances"
-        )
+        click.echo(f"  🎤 STT Transcription: {len(stt_result['utterances'])} utterances")
         click.echo(f"  ✏️  Edited Transcript: {edited_transcript_file}")
 
         stats = final_result["stats"]
@@ -1220,9 +1179,7 @@ def handle_edit_mode(
         sys.exit(1)
 
 
-def handle_interactive_editing(
-    editor: "TranscriptEditor", replacer: "SpeakerReplacer"
-) -> None:
+def handle_interactive_editing(editor: "TranscriptEditor", replacer: "SpeakerReplacer") -> None:
     """Handle interactive editing session"""
 
     click.echo("🎯 Interactive Editing Session")
@@ -1260,9 +1217,7 @@ def handle_interactive_editing(
                     old_speaker = parts[1]
                     new_speaker = parts[2]
                     count = editor.replace_speaker_id(old_speaker, new_speaker)
-                    click.echo(
-                        f"Replaced '{old_speaker}' -> '{new_speaker}' in {count} utterances"
-                    )
+                    click.echo(f"Replaced '{old_speaker}' -> '{new_speaker}' in {count} utterances")
                 else:
                     click.echo("Usage: replace <old_speaker> <new_speaker>")
             elif command.startswith("edit "):
@@ -1274,9 +1229,7 @@ def handle_interactive_editing(
                         if 0 <= index < len(utterances):
                             utterance = utterances[index]
                             click.echo(f"Current text: {utterance.get('text', '')}")
-                            new_text = click.prompt(
-                                "New text", default=utterance.get("text", "")
-                            )
+                            new_text = click.prompt("New text", default=utterance.get("text", ""))
                             editor.edit_utterance_text(index, new_text)
                             click.echo("✅ Utterance updated")
                         else:
@@ -1286,9 +1239,7 @@ def handle_interactive_editing(
                 else:
                     click.echo("Usage: edit <utterance_index>")
             else:
-                click.echo(
-                    f"Unknown command: {command}. Type 'help' for available commands."
-                )
+                click.echo(f"Unknown command: {command}. Type 'help' for available commands.")
 
         except KeyboardInterrupt:
             click.echo("\n🛑 Interactive editing interrupted")
@@ -1319,9 +1270,7 @@ def show_execution_paths() -> None:
             elif mode == "edit":
                 example_cmd = f"python -m src.main input.mp4 -p {path_key} --mode edit"
             elif mode == "tts":
-                example_cmd = (
-                    f"python -m src.main transcript.json -p {path_key} --mode tts"
-                )
+                example_cmd = f"python -m src.main transcript.json -p {path_key} --mode tts"
             click.echo(f"   {mode.title()}: {example_cmd}")
 
 
@@ -1349,13 +1298,9 @@ def determine_execution_path(
         return {
             "name": f"Custom: {primary_provider} → {secondary_provider}",
             "stt_provider": primary_path["stt_provider"],
-            "final_provider": secondary_path.get(
-                "final_provider", secondary_path["stt_provider"]
-            ),
+            "final_provider": secondary_path.get("final_provider", secondary_path["stt_provider"]),
             "cost_profile": f"{primary_path['cost_profile']} + {secondary_path['cost_profile']}",
-            "features": list(
-                set(primary_path["features"] + secondary_path["features"])
-            ),
+            "features": list(set(primary_path["features"] + secondary_path["features"])),
             "use_case": f"Custom workflow combining {primary_provider} and {secondary_provider}",
         }
 

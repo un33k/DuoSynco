@@ -4,7 +4,7 @@ Manages the complete STT -> Edit -> Final Diarization workflow
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Tuple, Callable
+from typing import Dict, Optional, Any, Callable
 from pathlib import Path
 import json
 import time
@@ -48,9 +48,7 @@ class EditWorkflow:
         self.results = {}
         self.intermediate_files = []
 
-        logger.info(
-            "EditWorkflow initialized: STT=%s, Final=%s", stt_provider, final_provider
-        )
+        logger.info("EditWorkflow initialized: STT=%s, Final=%s", stt_provider, final_provider)
 
     def execute(
         self,
@@ -137,9 +135,7 @@ class EditWorkflow:
 
             # Save workflow metadata
             if save_intermediate:
-                metadata_file = self._save_workflow_metadata(
-                    output_dir, complete_result
-                )
+                metadata_file = self._save_workflow_metadata(output_dir, complete_result)
                 complete_result["metadata_file"] = metadata_file
 
             # Cleanup if requested
@@ -178,9 +174,7 @@ class EditWorkflow:
         logger.info("Executing STT step: %s", input_file)
 
         # Initialize STT transcriber
-        stt_transcriber = STTAudioTranscriber(
-            provider=self.stt_provider, api_key=self.api_key
-        )
+        stt_transcriber = STTAudioTranscriber(provider=self.stt_provider, api_key=self.api_key)
 
         # Perform transcription
         base_filename = f"{Path(input_file).stem}_stt"
@@ -310,9 +304,7 @@ class EditWorkflow:
         # Save edited transcript
         if save_intermediate:
             output_path = Path(output_dir)
-            edited_transcript_file = (
-                output_path / f"{Path(output_dir).name}_edited_transcript.json"
-            )
+            edited_transcript_file = output_path / f"{Path(output_dir).name}_edited_transcript.json"
 
             saved_file = editor.save_transcript(
                 str(edited_transcript_file), format="json", backup_original=False
@@ -346,9 +338,7 @@ class EditWorkflow:
         logger.info("Executing final diarization step")
 
         # Initialize final diarizer
-        final_diarizer = SpeakerDiarizer(
-            provider=self.final_provider, api_key=self.api_key
-        )
+        final_diarizer = SpeakerDiarizer(provider=self.final_provider, api_key=self.api_key)
 
         # Get number of speakers from edited transcript
         final_speakers_count = edit_result.get("final_speakers", 2)
@@ -409,9 +399,7 @@ class EditWorkflow:
                     "step": 2,
                     "name": "Text Editing",
                     "modifications_applied": len(edit_result.get("modifications", [])),
-                    "speaker_replacements": len(
-                        edit_result.get("speaker_replacements", {})
-                    ),
+                    "speaker_replacements": len(edit_result.get("speaker_replacements", {})),
                     "text_edits": edit_result.get("text_edits", 0),
                     "final_speakers": edit_result.get("final_speakers", 0),
                 }
@@ -425,9 +413,7 @@ class EditWorkflow:
                     "step": 3,
                     "name": "Final Separation",
                     "speaker_files_created": len(final_result.get("speaker_files", [])),
-                    "coverage_percentage": final_result.get("stats", {}).get(
-                        "total_coverage", 0
-                    ),
+                    "coverage_percentage": final_result.get("stats", {}).get("total_coverage", 0),
                     "total_speaker_duration": final_result.get("stats", {}).get(
                         "total_speaker_duration", 0
                     ),
@@ -440,8 +426,7 @@ class EditWorkflow:
         """Save workflow metadata to JSON file"""
         output_path = Path(output_dir)
         metadata_file = (
-            output_path
-            / f"edit_workflow_metadata_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            output_path / f"edit_workflow_metadata_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         )
 
         # Prepare metadata (remove large objects)

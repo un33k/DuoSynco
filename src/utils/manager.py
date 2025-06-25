@@ -4,10 +4,9 @@ Enhanced file management with progress tracking, cleanup, and organization
 """
 
 import logging
-import os
 import shutil
 import tempfile
-from typing import Dict, List, Optional, Any, Callable, Set
+from typing import Dict, Optional, Any, Callable, Set
 from pathlib import Path
 from datetime import datetime
 import json
@@ -180,9 +179,7 @@ class FileManager:
         logger.info("Saved text file: %s", file_path)
         return file_path
 
-    def copy_file(
-        self, source: str, destination: str, is_intermediate: bool = False
-    ) -> str:
+    def copy_file(self, source: str, destination: str, is_intermediate: bool = False) -> str:
         """
         Copy file to managed location
 
@@ -194,17 +191,13 @@ class FileManager:
         Returns:
             Path to copied file
         """
-        dest_path = self.create_output_file(
-            destination, is_intermediate=is_intermediate
-        )
+        dest_path = self.create_output_file(destination, is_intermediate=is_intermediate)
         shutil.copy2(source, dest_path)
 
         logger.info("Copied file: %s -> %s", source, dest_path)
         return dest_path
 
-    def move_file(
-        self, source: str, destination: str, is_intermediate: bool = False
-    ) -> str:
+    def move_file(self, source: str, destination: str, is_intermediate: bool = False) -> str:
         """
         Move file to managed location
 
@@ -216,9 +209,7 @@ class FileManager:
         Returns:
             Path to moved file
         """
-        dest_path = self.create_output_file(
-            destination, is_intermediate=is_intermediate
-        )
+        dest_path = self.create_output_file(destination, is_intermediate=is_intermediate)
         shutil.move(source, dest_path)
 
         # Update tracking if source was tracked
@@ -315,9 +306,7 @@ class FileManager:
                 self.intermediate_files.remove(intermediate_file)
                 self.created_files.discard(intermediate_file)
             except Exception as e:
-                logger.warning(
-                    "Failed to cleanup intermediate file %s: %s", intermediate_file, e
-                )
+                logger.warning("Failed to cleanup intermediate file %s: %s", intermediate_file, e)
 
         logger.info("Cleaned up %d intermediate files", cleaned_count)
         return cleaned_count
@@ -361,7 +350,7 @@ class FileManager:
             try:
                 if Path(file_path).exists():
                     total_size += Path(file_path).stat().st_size
-            except:
+            except Exception:
                 pass
 
         info["total_size_mb"] = total_size / (1024 * 1024)
@@ -423,7 +412,7 @@ class FileManager:
                 for chunk in iter(lambda: f.read(4096), b""):
                     hasher.update(chunk)
             return hasher.hexdigest()
-        except:
+        except Exception:
             return ""
 
     def _report_progress(self, message: str, progress: float) -> None:
@@ -439,5 +428,5 @@ class FileManager:
         if self.auto_cleanup:
             try:
                 self.cleanup_temp_files()
-            except:
+            except Exception:
                 pass

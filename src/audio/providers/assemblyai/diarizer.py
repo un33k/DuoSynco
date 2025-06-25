@@ -3,8 +3,6 @@ AssemblyAI Speaker Diarization Provider
 Using the official AssemblyAI SDK for cleaner and more maintainable code
 """
 
-import os
-import time
 import logging
 from typing import Dict, List, Tuple, Optional
 from pathlib import Path
@@ -35,8 +33,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         self.api_key = api_key or self._get_api_key()
         if not self.api_key:
             raise ValueError(
-                "AssemblyAI API key not found. "
-                "Set ASSEMBLYAI_API_KEY environment variable"
+                "AssemblyAI API key not found. " "Set ASSEMBLYAI_API_KEY environment variable"
             )
 
         # Configure the SDK
@@ -80,7 +77,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         """Validate API key by testing SDK connection"""
         try:
             # Try to list transcripts to validate the API key (no parameters needed)
-            transcripts = self.transcriber.list_transcripts()
+            self.transcriber.list_transcripts()
             logger.debug("API key validation successful")
         except Exception as e:
             if "401" in str(e) or "Unauthorized" in str(e):
@@ -260,19 +257,13 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
 
             # Process utterances into speaker tracks
             if enhanced_processing:
-                speaker_tracks = self._enhanced_separation(
-                    utterances, audio_data, sample_rate
-                )
+                speaker_tracks = self._enhanced_separation(utterances, audio_data, sample_rate)
             else:
-                speaker_tracks = self._basic_separation(
-                    utterances, audio_data, sample_rate
-                )
+                speaker_tracks = self._basic_separation(utterances, audio_data, sample_rate)
 
             # Prepare transcript text
             transcript_text = (
-                transcript.text
-                if transcript.text
-                else self._format_transcript(utterances)
+                transcript.text if transcript.text else self._format_transcript(utterances)
             )
 
             # Prepare utterances list for compatibility
@@ -322,8 +313,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
 
         # Create tracks using chronological speaker IDs
         speaker_tracks = {
-            mapped_id: np.zeros_like(audio_data)
-            for mapped_id in speaker_mapping.values()
+            mapped_id: np.zeros_like(audio_data) for mapped_id in speaker_mapping.values()
         }
 
         for utterance in utterances:
@@ -363,8 +353,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
 
         # Create tracks using chronological speaker IDs
         speaker_tracks = {
-            mapped_id: np.zeros_like(audio_data)
-            for mapped_id in speaker_mapping.values()
+            mapped_id: np.zeros_like(audio_data) for mapped_id in speaker_mapping.values()
         }
 
         # Sort utterances by start time
@@ -434,9 +423,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
 
         return speaker_tracks
 
-    def _enhance_speaker_boundaries(
-        self, utterances: List[Dict], words: List[Dict]
-    ) -> List[Dict]:
+    def _enhance_speaker_boundaries(self, utterances: List[Dict], words: List[Dict]) -> List[Dict]:
         """
         Enhance speaker boundaries using word-level timestamps for precise cuts
 
@@ -462,8 +449,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
                 word
                 for word in words
                 if (
-                    word.get("start", 0) >= start_ms
-                    and word.get("end", 0) <= end_ms + 100
+                    word.get("start", 0) >= start_ms and word.get("end", 0) <= end_ms + 100
                 )  # 100ms tolerance
             ]
 
@@ -489,9 +475,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
 
                 # If gap is artificial (exactly 400ms), reduce to natural pause
                 elif 390 <= gap_ms <= 410:  # 400ms ± 10ms tolerance
-                    logger.debug(
-                        "Converting artificial 400ms gap to natural 100ms pause"
-                    )
+                    logger.debug("Converting artificial 400ms gap to natural 100ms pause")
                     precise_start = prev_end + 100
 
             enhanced_utterance = {
@@ -520,9 +504,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         )
         return enhanced_utterances
 
-    def _cleanup_cross_talk(
-        self, speaker_tracks: Dict[str, np.ndarray], sample_rate: int
-    ) -> None:
+    def _cleanup_cross_talk(self, speaker_tracks: Dict[str, np.ndarray], sample_rate: int) -> None:
         """Remove overlapping segments using energy-based analysis"""
         logger.info("Performing cross-talk cleanup...")
 
@@ -611,14 +593,11 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
                 )
                 sf.write(audio_file, speaker_tracks[speaker], sample_rate)
                 saved_files.append(str(audio_file))
-                logger.info(
-                    "Saved %s: %s (%.1fs)", speaker, audio_file, speaker_duration
-                )
+                logger.info("Saved %s: %s (%.1fs)", speaker, audio_file, speaker_duration)
 
         # Save transcript
         transcript_file = (
-            output_path / f"{base_filename}_transcript_"
-            f"{self.provider_name.lower()}.txt"
+            output_path / f"{base_filename}_transcript_" f"{self.provider_name.lower()}.txt"
         )
         with open(transcript_file, "w", encoding="utf-8") as f:
             f.write(transcript_text)

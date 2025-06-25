@@ -130,9 +130,7 @@ class CharacterManager:
                 mapping[speaker_id] = character.voice_id
         return mapping
 
-    def auto_assign_voices(
-        self, speaker_ids: List[str], language: str = "en"
-    ) -> Dict[str, str]:
+    def auto_assign_voices(self, speaker_ids: List[str], language: str = "en") -> Dict[str, str]:
         """
         Automatically assign voices to speakers
 
@@ -175,9 +173,7 @@ class CharacterManager:
     def save_profiles(self, file_path: Path) -> None:
         """Save character profiles to file"""
         data = {
-            "characters": {
-                cid: char.to_dict() for cid, char in self.characters.items()
-            },
+            "characters": {cid: char.to_dict() for cid, char in self.characters.items()},
             "speaker_mappings": self.speaker_to_character_mapping,
         }
 
@@ -254,16 +250,10 @@ class CharacterManager:
             "mapped_speakers": len(self.speaker_to_character_mapping),
             "languages": list(set(char.language for char in self.characters.values())),
             "speaking_styles": list(
-                set(
-                    char.speaking_style
-                    for char in self.characters.values()
-                    if char.speaking_style
-                )
+                set(char.speaking_style for char in self.characters.values() if char.speaking_style)
             ),
             "characters_by_language": {
-                lang: len(
-                    [char for char in self.characters.values() if char.language == lang]
-                )
+                lang: len([char for char in self.characters.values() if char.language == lang])
                 for lang in set(char.language for char in self.characters.values())
             },
         }
