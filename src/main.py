@@ -464,15 +464,15 @@ def cli(
         )
 
         # Display results
-        stats = result["stats"]
+        stats = result["stats"]  # type: ignore[index]  # Dynamic result dict from audio processing
         click.echo("✅ Speaker separation completed!")
         click.echo(
-            f"📊 Coverage: {stats['total_coverage']:.1f}% "
-            f"({stats['total_speaker_duration']:.1f}s / "
-            f"{stats['original_duration']:.1f}s)"
+            f"📊 Coverage: {stats['total_coverage']:.1f}% "  # type: ignore[index]
+            f"({stats['total_speaker_duration']:.1f}s / "  # type: ignore[index]
+            f"{stats['original_duration']:.1f}s)"  # type: ignore[index]
         )
 
-        for speaker, speaker_stats in stats["speakers"].items():
+        for speaker, speaker_stats in stats["speakers"].items():  # type: ignore[attr-defined]
             click.echo(
                 f"  {speaker}: {speaker_stats['duration']:.1f}s "
                 f"({speaker_stats['coverage']:.1f}%)"
@@ -484,9 +484,9 @@ def cli(
         if file_info and file_info.is_audio and not file_info.is_video:
             # Audio-only processing - we already have the separated files
             click.echo("🎵 Audio-only processing completed!")
-            click.echo(f"📄 Transcript: {result['transcript_file']}")
+            click.echo(f"📄 Transcript: {result['transcript_file']}")  # type: ignore[index]
             click.echo("🎵 Separated audio files:")
-            for audio_file in result["speaker_files"]:
+            for audio_file in result["speaker_files"]:  # type: ignore[attr-defined]
                 click.echo(f"  - {audio_file}")
         else:
             # Step 2: Video Processing - Sync videos with separated audio
@@ -496,7 +496,7 @@ def cli(
 
             # Generate synchronized video files for each speaker
             video_files = []
-            for i, audio_file in enumerate(result["speaker_files"]):
+            for i, audio_file in enumerate(result["speaker_files"]):  # type: ignore[attr-defined]
                 speaker_name = (
                     result["speakers"][i] if i < len(result["speakers"]) else f"speaker_{i+1}"
                 )
@@ -563,7 +563,7 @@ def handle_dialogue_mode(
 
     # Initialize configuration for dialogue workflow
     config = Config(quality="high", output_format="mp4", verbose=verbose)
-    config.elevenlabs_api_key = api_key
+    config.elevenlabs_api_key = api_key  # type: ignore[attr-defined]  # Dynamic attribute for API key
 
     # Create dialogue workflow
     try:
@@ -1157,17 +1157,17 @@ def handle_edit_mode(
         click.echo(f"  🎤 STT Transcription: {len(stt_result['utterances'])} utterances")
         click.echo(f"  ✏️  Edited Transcript: {edited_transcript_file}")
 
-        stats = final_result["stats"]
-        click.echo(f"  🎯 Final Separation: {stats['total_coverage']:.1f}% coverage")
+        stats = final_result["stats"]  # type: ignore[index]  # Dynamic result dict
+        click.echo(f"  🎯 Final Separation: {stats['total_coverage']:.1f}% coverage")  # type: ignore[index]
 
-        for speaker, speaker_stats in stats["speakers"].items():
+        for speaker, speaker_stats in stats["speakers"].items():  # type: ignore[attr-defined]
             click.echo(
                 f"    {speaker}: {speaker_stats['duration']:.1f}s ({speaker_stats['coverage']:.1f}%)"
             )
 
-        click.echo(f"\n📄 Final transcript: {final_result['transcript_file']}")
+        click.echo(f"\n📄 Final transcript: {final_result['transcript_file']}")  # type: ignore[index]
         click.echo("🎵 Final separated audio files:")
-        for audio_file in final_result["speaker_files"]:
+        for audio_file in final_result["speaker_files"]:  # type: ignore[attr-defined]
             click.echo(f"  - {audio_file}")
 
     except Exception as e:

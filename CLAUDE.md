@@ -268,6 +268,24 @@ quality = os.environ.get('DUOSYNCO_QUALITY', 'medium')
 - **ALWAYS** make code modular - separate functions into different files/modules for maintainability
 - If you need a bash wrapper, keep it minimal (< 20 lines) and only for environment setup and Python invocation
 
+### MyPy Type Checking Policy
+- **Selective enforcement**: MyPy is configured to check only core modules (main.py, config.py, util_env.py)
+- **Relaxed settings**: Uses permissive configuration to avoid blocking development velocity
+- **Strategic ignores**: Use `# type: ignore[error-code]` comments for dynamic operations (API responses, runtime data structures)
+- **Core modules focus**: Strict type checking on business logic, relaxed on processing modules
+- **Development priority**: Favor functionality over perfect type coverage
+
+#### When to use `# type: ignore`:
+- Dynamic API response parsing (ElevenLabs, AssemblyAI responses)
+- Runtime configuration attributes (config.elevenlabs_api_key)
+- Audio/video processing results with dynamic structures
+- Complex data transformations where types are hard to infer
+
+#### MyPy configuration files:
+- `mypy.ini`: Main configuration with selective module checking
+- Core modules: Full type checking enabled
+- Processing modules: Errors ignored to reduce maintenance overhead
+
 ### HTTP API Implementation
 - **Direct API calls**: Use HTTP requests instead of SDKs for maximum control and cross-platform compatibility
 - **Full request/response control**: Manage timeouts, retries, headers, and error handling explicitly

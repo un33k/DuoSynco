@@ -171,7 +171,7 @@ class TTSAudioGenerator:
         }
 
         # Calculate per-speaker statistics
-        speaker_segments = {}
+        speaker_segments: Dict[str, List[Dict[str, Any]]] = {}
         for segment in transcript_segments:
             speaker = segment["speaker"]
             if speaker not in speaker_segments:

@@ -4,7 +4,7 @@ High-level interface for speaker separation using multiple providers
 """
 
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 import numpy as np
 from pathlib import Path
 
@@ -39,7 +39,7 @@ class SpeakerDiarizer:
         language: str = "en",
         enhanced_processing: bool = True,
         base_filename: Optional[str] = None,
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Separate speakers in audio file and save results
 
@@ -124,7 +124,7 @@ class SpeakerDiarizer:
         speaker_tracks: Dict[str, np.ndarray],
         sample_rate: int,
         original_duration: float,
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """Calculate processing statistics"""
         stats = {
             "original_duration": original_duration,
