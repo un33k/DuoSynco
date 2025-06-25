@@ -21,7 +21,24 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ matrix.python-version }}-
+          ${{ runner.os }}-pip-
+
+    - name: Cache FFmpeg
+      id: cache-ffmpeg
+      uses: actions/cache@v3
+      with:
+        path: /usr/bin/ffmpeg
+        key: ${{ runner.os }}-ffmpeg
+
     - name: Install FFmpeg
+      if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update
         sudo apt-get install -y ffmpeg
