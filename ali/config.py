@@ -32,6 +32,20 @@ class AliConfig:
         self.project_root = project_root
         self.env_file = project_root / '.env.local'
         self._load_env()
+        
+        # Initialize mutable defaults
+        self._defaults = {
+            'provider': 'elevenlabs',  # Default provider for STT  
+            'language': 'en',          # Default to English
+            'output_dir': str(self.project_root / 'output'),
+            'verbose': True,
+            'voice_mapping': 'auto',
+            'mode': 'tts',
+            'tts_quality': 'high',
+            'timing_mode': 'adaptive',
+            'gap_duration': '0.4',
+            'model_id': 'eleven_multilingual_v2'
+        }
     
     def _load_env(self):
         """Load environment variables from .env.local"""
@@ -46,18 +60,7 @@ class AliConfig:
     @property
     def defaults(self) -> Dict[str, str]:
         """Default configuration values"""
-        return {
-            'provider': 'elevenlabs',  # Default provider for STT  
-            'language': 'en',          # Default to English
-            'output_dir': str(self.project_root / 'output'),
-            'verbose': True,
-            'voice_mapping': 'auto',
-            'mode': 'tts',
-            'tts_quality': 'high',
-            'timing_mode': 'adaptive',
-            'gap_duration': '0.4',
-            'model_id': 'eleven_multilingual_v2'
-        }
+        return self._defaults
     
     @property
     def voice_mapping(self) -> Dict[str, str]:
