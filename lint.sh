@@ -22,4 +22,8 @@ echo "3️⃣ Running MyPy type checker..."
 mypy src/
 
 echo ""
+echo "4️⃣ Running Unit Tests..."
+python test_runner.py --quick
+
+echo ""
 echo "✅ All code quality checks completed!"
