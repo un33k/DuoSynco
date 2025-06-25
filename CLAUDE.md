@@ -296,6 +296,7 @@ quality = os.environ.get('DUOSYNCO_QUALITY', 'medium')
 ### Claude Code Execution
 - **For Claude Code**: ALWAYS run `source ~/.zshrc && source .venv/bin/activate &&` before any Python command
 - This ensures API keys from .zshrc are loaded AND virtual environment is activated
+- **CRITICAL**: ALL commands must go through the CLI interface (`python -m src.main`) - NO direct calls to individual .py files
 - Example: `source ~/.zshrc && source .venv/bin/activate && python -m src.main --list-providers`
 
 ## CLI Standards and Conventions

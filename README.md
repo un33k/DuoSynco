@@ -2,7 +2,16 @@
 
 **Video/Audio Synchronization Tool with Speaker Separation**
 
-DuoSynco is a Python-based CLI tool that separates speakers in video files and creates isolated audio tracks. Using advanced speaker diarization, it generates separate video files where each contains only one speaker's audio while maintaining perfect video synchronization.
+DuoSynco is a Python-based CLI tool that separates speakers in video files and creates isolated audio tracks. Using advanced speaker diarization APIs (AssemblyAI and ElevenLabs), it generates separate audio/video files where each contains only one speaker's audio while maintaining perfect video synchronization.
+
+## 🔧 Providers
+
+DuoSynco supports two professional-grade AI providers:
+
+- **AssemblyAI**: Cost-effective speaker diarization with high accuracy
+- **ElevenLabs**: Premium STT/TTS with advanced features and voice synthesis
+
+Each provider offers different execution paths and capabilities - see provider-specific documentation for details.
 
 ## 🚀 Quick Start
 
@@ -42,15 +51,20 @@ pip install -e ".[dev]"
 
 ### Basic Usage
 
+**Always use the bash wrapper script (`./scripts/run.sh`) for command execution:**
+
 ```bash
-# Using the convenient bash script
+# AssemblyAI Provider (Default) - Cost-effective diarization
 ./scripts/run.sh input_video.mp4
 
-# Using Python module directly
-python -m src.main input_video.mp4 --output-dir ./output
+# ElevenLabs Provider - Premium STT/TTS features
+./scripts/run.sh input_video.mp4 -p elevenlabs
 
-# Quick test with provided sample (host + guest conversation)
-./scripts/run.sh sample_data/TheAnnunaki.wav --speakers 2 --verbose
+# ElevenLabs Edit Mode - STT + Diarization combo
+./scripts/run.sh input_video.mp4 -p elevenlabs --mode edit
+
+# Quick test with provided sample
+./scripts/run.sh sample_data/annunaki-en.mp3 --speakers 2 --verbose
 
 # With options
 ./scripts/run.sh interview.mp4 \
@@ -149,15 +163,26 @@ DuoSynco/
 
 ### Command Line Options
 ```bash
-duosynco input.mp4 [OPTIONS]
+./scripts/run.sh input.mp4 [OPTIONS]
 
-Options:
-  -o, --output-dir PATH    Output directory (default: ./output)
-  -s, --speakers INTEGER   Number of speakers (default: 2)  
-  -f, --format CHOICE      Output format: mp4, avi, mov (default: mp4)
-  -q, --quality CHOICE     Quality: low, medium, high (default: medium)
-  -v, --verbose           Enable verbose output
-  -h, --help              Show help message
+Core Options:
+  -o, --output-dir PATH           Output directory (default: ./output)
+  -s, --speakers INTEGER          Number of speakers (default: 2)
+  -f, --format CHOICE             Output format: mp4, avi, mov (default: mp4)
+  -q, --quality CHOICE            Quality: low, medium, high (default: medium)
+  -v, --verbose                   Enable verbose output
+  -p, --provider CHOICE           Provider: assemblyai, elevenlabs (default: assemblyai)
+  --mode CHOICE                   Mode: diarization, edit, tts, dialogue (default: diarization)
+  -h, --help                      Show help message
+
+Provider-Specific Options:
+  --tts-quality CHOICE            TTS quality: low, medium, high, ultra (default: high)
+  --stt-quality CHOICE            STT quality: low, medium, high, ultra (default: high)
+  --voice-mapping TEXT            Voice mapping JSON or "auto"
+  --transcript-file PATH          Transcript file for TTS mode
+  --total-duration FLOAT          Total duration for TTS mode (seconds)
+  --list-providers                List available providers
+  --list-voices                   List available TTS voices
 ```
 
 ### Environment Variables
@@ -187,13 +212,28 @@ pytest tests/test_audio/ -v
 ```
 
 ### Quick Functional Test
-```bash
-# Test speaker separation with provided sample
-./scripts/run.sh sample_data/TheAnnunaki.wav --speakers 2 --verbose
 
-# Expected output: Two separate audio files in ./output/
-# - TheAnnunaki_speaker_1.mp4 (host audio only)
-# - TheAnnunaki_speaker_2.mp4 (guest audio only)
+**AssemblyAI Provider Test:**
+```bash
+./scripts/run.sh sample_data/annunaki-en.mp3 --speakers 2 --verbose
+
+# Expected output in ./output/:
+# - annunaki-en_speaker_0_assemblyai.wav (speaker 0 audio)
+# - annunaki-en_speaker_1_assemblyai.wav (speaker 1 audio)
+# - annunaki-en_transcript_assemblyai.txt (full transcript)
+# Coverage: ~97% (186s/191s), Speaker split: 35%/65%
+```
+
+**ElevenLabs Provider Test:**
+```bash
+./scripts/run.sh sample_data/annunaki-en.mp3 -p elevenlabs --mode edit --speakers 2 --verbose
+
+# Expected output in ./output/:
+# - annunaki-en_final_speaker_0_assemblyai.wav (speaker 0 audio)
+# - annunaki-en_final_speaker_1_assemblyai.wav (speaker 1 audio)
+# - annunaki-en_edited_transcript.json (editable transcript)
+# - annunaki-en_final_transcript_assemblyai.txt (final transcript)
+# Coverage: ~97% (186s/191s), Speaker split: 34%/63%
 ```
 
 ## 🔧 Dependencies
