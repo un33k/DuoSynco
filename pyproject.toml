@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "duosynco"
+version = "0.1.0"
+description = "Sync two videos with their audio - Voice isolation and synchronization tool"
+authors = [
+    {name = "DuoSynco Team"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "click>=8.0.0",
+    "librosa>=0.10.0",
+    "pydub>=0.25.0",
+    "moviepy>=1.0.0",
+    "pyannote.audio>=3.0.0",
+    "torch>=1.13.0",
+    "torchaudio>=0.13.0",
+    "numpy>=1.21.0",
+    "scipy>=1.7.0",
+    "pathlib2>=2.3.0; python_version<'3.4'",
+    "python-dotenv>=1.0.0",
+    "soundfile>=0.12.0",
+    "requests>=2.28.0",
+    "elevenlabs>=2.5.0",
+    "assemblyai>=0.41.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=22.0.0",
+    "flake8>=5.0.0",
+    "mypy>=0.991",
+    "types-requests>=2.32.0",
+]
+
+[project.scripts]
+duosynco = "src.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38']
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203", "W503"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

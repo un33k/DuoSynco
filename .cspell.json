@@ -1,0 +1,41 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "aac",
+    "assemblyai",
+    "ASSEMBLYAI",
+    "diarization",
+    "Diarizer",
+    "dotenv",
+    "duosynco",
+    "DuoSynco",
+    "elevenlabs",
+    "ELEVENLABS",
+    "EXAVIT",
+    "ffmpeg",
+    "flac",
+    "librosa",
+    "mkv",
+    "moviepy",
+    "ndarray",
+    "numpy",
+    "obpg",
+    "ogg",
+    "Ouka",
+    "pyannote",
+    "pydub",
+    "soundfile",
+    "webm",
+    "wmv"
+  ],
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    "*.pyc",
+    "__pycache__/**",
+    ".venv/**",
+    "output/**",
+    "sample_data/**"
+  ]
+}

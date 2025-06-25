@@ -1,0 +1,65 @@
+{
+  "python.defaultInterpreterPath": "./.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.venvPath": ".",
+  "python.venvFolders": [".venv"],
+  "python.pythonPath": "./.venv/bin/python",
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": ["tests"],
+  "python.testing.unittestEnabled": false,
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true,
+  "python.linting.mypyEnabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.formatting.provider": "black",
+  "python.formatting.blackArgs": ["--line-length=88"],
+  "python.sortImports.args": ["--profile", "black"],
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/temp": true,
+    "**/tmp": true
+  },
+  "python.analysis.extraPaths": ["./src"],
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.typeCheckingMode": "basic",
+  "files.associations": {
+    "*.py": "python"
+  },
+  "emmet.includeLanguages": {
+    "python": "python"
+  },
+  "cSpell.words": [
+    "duosynco",
+    "pyannote",
+    "librosa",
+    "moviepy",
+    "pydub",
+    "diarization",
+    "synchronizer",
+    "isolator",
+    "ffmpeg",
+    "statvfs",
+    "bavail",
+    "frsize",
+    "flac",
+    "torchaudio",
+    "pytest",
+    "mypy",
+    "pyproject",
+    "venv",
+    "soundfile",
+    "pyenv",
+    "Annunaki"
+  ],
+  "makefile.configureOnOpen": false,
+  "editor.rulers": [100],
+  "editor.wordWrap": "wordWrapColumn",
+  "editor.wordWrapColumn": 100
+}
