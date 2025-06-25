@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from .config import AliConfig
-from .transcript_converter import TranscriptConverter
+from .converter import TranscriptConverter
 
 
 class AliCommands:

@@ -164,7 +164,7 @@ class EditWorkflow:
         save_intermediate: bool
     ) -> Dict[str, Any]:
         """Execute STT step"""
-        from ..audio.audio_stt import STTAudioTranscriber
+        from ..audio.stt import STTAudioTranscriber
         
         logger.info("Executing STT step: %s", input_file)
         
@@ -316,7 +316,7 @@ class EditWorkflow:
         save_intermediate: bool
     ) -> Dict[str, Any]:
         """Execute final diarization step"""
-        from ..audio.audio_diarization import SpeakerDiarizer
+        from ..audio.diarization import SpeakerDiarizer
         
         logger.info("Executing final diarization step")
         

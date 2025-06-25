@@ -59,7 +59,7 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
     def _get_api_key(self) -> Optional[str]:
         """Get API key from multiple sources"""
         # Load from .env.local file first
-        from ....utils.util_env import get_env
+        from ....utils.env import get_env
         
         # Try environment variable with proper priority order
         api_key = get_env('ASSEMBLYAI_API_KEY')

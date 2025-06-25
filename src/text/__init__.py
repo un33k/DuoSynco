@@ -3,7 +3,7 @@ Text processing module for DuoSynco
 Handles transcript editing, speaker replacement, and text manipulation
 """
 
-from .text_editor import TranscriptEditor
-from .text_replacer import SpeakerReplacer
+from .editor import TranscriptEditor
+from .replacer import SpeakerReplacer
 
 __all__ = ['TranscriptEditor', 'SpeakerReplacer']

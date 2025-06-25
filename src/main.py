@@ -10,9 +10,9 @@ from typing import Optional, List, Dict, Any
 import sys
 import logging
 
-from .utils.util_files import FileHandler
+from .utils.files import FileHandler
 from .utils.config import Config
-from .video.video_sync import VideoSynchronizer
+from .video.sync import VideoSynchronizer
 
 # File extension constants for cross-platform compatibility
 AUDIO_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.aac']
@@ -214,7 +214,7 @@ def cli(input_file: Optional[Path],
 
     # Handle list-providers option
     if list_providers:
-        from .audio.audio_diarization import SpeakerDiarizer
+        from .audio.diarization import SpeakerDiarizer
         providers = SpeakerDiarizer.list_providers()
         click.echo("🔧 Available Speaker Diarization Providers:")
         for provider_name, info in providers.items():
@@ -227,7 +227,7 @@ def cli(input_file: Optional[Path],
 
     # Handle list-voices option
     if list_voices:
-        from .audio.audio_tts import TTSAudioGenerator
+        from .audio.tts import TTSAudioGenerator
         try:
             tts_generator = TTSAudioGenerator(provider='elevenlabs', api_key=api_key)
             voices_info = tts_generator.list_available_voices()
@@ -256,7 +256,7 @@ def cli(input_file: Optional[Path],
 
     # Handle show-config option
     if show_config:
-        from .utils.util_env import env
+        from .utils.env import env
         env.print_config()
         
         # Show voice mapping if available
@@ -334,7 +334,7 @@ def cli(input_file: Optional[Path],
         click.echo(f"🔍 Analyzing speakers with {provider}...")
 
         try:
-            from .audio.audio_diarization import SpeakerDiarizer
+            from .audio.diarization import SpeakerDiarizer
             diarizer = SpeakerDiarizer(provider=provider, api_key=api_key)
         except ValueError as e:
             click.echo(f"❌ Error: {e}", err=True)
@@ -445,7 +445,7 @@ def handle_dialogue_mode(
     verbose: bool
 ) -> None:
     """Handle dialogue generation mode"""
-    from .workflows.dialogue_workflow import DialogueWorkflow
+    from .workflows.dialogue import DialogueWorkflow
     from .utils.config import Config
     import json
     
@@ -662,7 +662,7 @@ def handle_tts_mode(
     if voice_mapping:
         if voice_mapping.lower() == "auto":
             # Load from environment
-            from .audio.voice_config import get_voice_mapping
+            from .audio.voice import get_voice_mapping
             parsed_voice_mapping = get_voice_mapping()
             if not parsed_voice_mapping:
                 click.echo("❌ Error: No voice mapping found in .env-local", err=True)
@@ -690,7 +690,7 @@ def handle_tts_mode(
         
         # Handle voice cloning if requested
         if clone_voices:
-            from .audio.providers.elevenlabs.el_voice import VoiceManager
+            from .audio.providers.elevenlabs.voice import VoiceManager
             
             click.echo("🎭 Voice cloning enabled - extracting speaker voices...")
             
@@ -747,7 +747,7 @@ def handle_tts_mode(
                 click.echo("⚠️  Original audio file not found, using default voices")
 
         # Initialize TTS generator
-        from .audio.audio_tts import TTSAudioGenerator
+        from .audio.tts import TTSAudioGenerator
         tts_generator = TTSAudioGenerator(provider='elevenlabs', api_key=api_key)
         
         # Create output directory
@@ -918,7 +918,7 @@ def handle_edit_mode(
         stt_provider = execution_path['stt_provider']
         click.echo(f"🎤 Step 1: Transcribing audio with {stt_provider}...")
         
-        from .audio.audio_stt import STTAudioTranscriber
+        from .audio.stt import STTAudioTranscriber
         
         try:
             stt_transcriber = STTAudioTranscriber(provider=stt_provider, api_key=api_key)
@@ -1003,7 +1003,7 @@ def handle_edit_mode(
         final_provider = execution_path['final_provider']
         click.echo(f"🎯 Step 3: Final audio separation with {final_provider}...")
         
-        from .audio.audio_diarization import SpeakerDiarizer
+        from .audio.diarization import SpeakerDiarizer
         
         try:
             final_diarizer = SpeakerDiarizer(provider=final_provider, api_key=api_key)

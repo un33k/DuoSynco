@@ -8,11 +8,11 @@ from pathlib import Path
 import json
 import tempfile
 
-from .dialogue_base import DialogueBase, DialogueSegment
-from .dialogue_converter import TranscriptToDialogueConverter
-from .dialogue_generator import DialogueGenerator
-from .character_profile import CharacterManager
-from ..providers.elevenlabs.el_voice import VoiceManager
+from .base import DialogueBase, DialogueSegment
+from .converter import TranscriptToDialogueConverter
+from .generator import DialogueGenerator
+from .profile import CharacterManager
+from ..providers.elevenlabs.voice import VoiceManager
 
 logger = logging.getLogger(__name__)
 

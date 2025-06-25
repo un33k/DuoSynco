@@ -8,9 +8,9 @@ from typing import List, Dict, Optional, Any, Tuple
 from pathlib import Path
 import json
 
-from .dialogue_base import DialogueBase, DialogueSegment
-from .character_profile import CharacterManager
-from ..providers.elevenlabs.el_voice import VoiceManager
+from .base import DialogueBase, DialogueSegment
+from .profile import CharacterManager
+from ..providers.elevenlabs.voice import VoiceManager
 
 
 class TranscriptToDialogueConverter:

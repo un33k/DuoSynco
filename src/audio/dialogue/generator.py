@@ -9,8 +9,8 @@ from pathlib import Path
 import json
 import time
 
-from .dialogue_base import DialogueBase, DialogueSegment
-from ...utils.util_env import get_env
+from .base import DialogueBase, DialogueSegment
+from ...utils.env import get_env
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +170,7 @@ class DialogueGenerator:
             True if successful, False otherwise
         """
         try:
-            from ..providers.elevenlabs.el_tts import ElevenLabsTTSProvider
+            from ..providers.elevenlabs.tts import ElevenLabsTTSProvider
             from pydub import AudioSegment
             import tempfile
             

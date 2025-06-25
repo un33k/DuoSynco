@@ -71,7 +71,7 @@ class AliConfig:
     @property
     def api_key(self) -> Optional[str]:
         """Get ElevenLabs API key"""
-        from ..src.utils.util_env import get_env
+        from ..src.utils.env import get_env
         return get_env('ELEVENLABS_API_KEY')
     
     def get_sample_data_dir(self) -> Path:

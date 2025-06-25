@@ -97,13 +97,13 @@ def get_env(key: str, file_path: Optional[str] = None, default: Optional[str] = 
 class EnvConfig:
     """
     Environment configuration object for backwards compatibility
-    Delegates voice-related calls to the audio.voice_config module
+    Delegates voice-related calls to the audio.voice module
     """
     
     @staticmethod
     def get_voice_mapping() -> Dict[str, str]:
-        """Get voice mapping - delegates to audio.voice_config module"""
-        from ..audio.voice_config import get_voice_mapping
+        """Get voice mapping - delegates to audio.voice module"""
+        from ..audio.voice import get_voice_mapping
         return get_voice_mapping()
     
     @staticmethod
@@ -122,7 +122,7 @@ class EnvConfig:
                 print(f"❌ Missing: {env_file}")
         
         # Show voice mapping
-        from ..audio.voice_config import get_voice_mapping
+        from ..audio.voice import get_voice_mapping
         voice_mapping = get_voice_mapping()
         if voice_mapping:
             print("Voice Mapping:")

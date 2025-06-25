@@ -120,7 +120,7 @@ class Config:
         Returns:
             Config instance with settings from environment
         """
-        from .util_env import get_env
+        from .env import get_env
         
         return cls(
             quality=get_env('DUOSYNCO_QUALITY', default='medium'),

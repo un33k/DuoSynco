@@ -17,6 +17,7 @@
     "librosa",
     "mkv",
     "moviepy",
+    "numpy",
     "ogg",
     "pyannote",
     "pydub",

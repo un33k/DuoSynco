@@ -14,7 +14,7 @@ from ..audio.dialogue import (
     DialogueGenerator,
     CharacterManager
 )
-from ..audio.providers.elevenlabs.el_voice import VoiceManager
+from ..audio.providers.elevenlabs.voice import VoiceManager
 from ..utils.config import Config
 
 logger = logging.getLogger(__name__)
@@ -108,7 +108,7 @@ class DialogueWorkflow:
                 print("🔄 Converting transcript to dialogue format...")
             
             # Merge custom voice mapping with environment voice mapping
-            from ..audio.voice_config import get_voice_mapping
+            from ..audio.voice import get_voice_mapping
             env_voice_mapping = get_voice_mapping()
             
             final_voice_mapping = {}
@@ -237,7 +237,7 @@ class DialogueWorkflow:
         
         try:
             # Merge custom voice mapping with environment voice mapping
-            from ..audio.voice_config import get_voice_mapping
+            from ..audio.voice import get_voice_mapping
             env_voice_mapping = get_voice_mapping()
             
             final_voice_mapping = {}

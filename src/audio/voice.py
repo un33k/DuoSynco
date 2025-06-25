@@ -4,7 +4,7 @@ Handles voice-related environment variables and speaker mappings
 """
 
 from typing import Dict
-from ..utils.util_env import get_env
+from ..utils.env import get_env
 
 
 def get_voice_mapping() -> Dict[str, str]:

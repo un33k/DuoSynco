@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from pathlib import Path
 import json
-from ..providers.elevenlabs.el_voice import VoiceManager
+from ..providers.elevenlabs.voice import VoiceManager
 
 
 @dataclass

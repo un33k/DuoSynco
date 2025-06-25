@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 import json
 
-from .text_editor import TranscriptEditor
+from .editor import TranscriptEditor
 
 logger = logging.getLogger(__name__)
 
