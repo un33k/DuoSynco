@@ -74,14 +74,6 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
         if api_key:
             return api_key
             
-        # Try direct environment variables (fallback)
-        api_key = os.getenv('ELEVENLABS_API_KEY')
-        if api_key:
-            return api_key
-            
-        api_key = os.getenv('ELEVEN_LABS_API_KEY')
-        if api_key:
-            return api_key
             
         # Try local key file (legacy fallback)
         try:

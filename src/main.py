@@ -662,7 +662,7 @@ def handle_tts_mode(
     if voice_mapping:
         if voice_mapping.lower() == "auto":
             # Load from environment
-            from .utils.util_env import get_voice_mapping
+            from .audio.voice_config import get_voice_mapping
             parsed_voice_mapping = get_voice_mapping()
             if not parsed_voice_mapping:
                 click.echo("❌ Error: No voice mapping found in .env-local", err=True)

@@ -65,17 +65,14 @@ class AliConfig:
     @property
     def voice_mapping(self) -> Dict[str, str]:
         """Get voice mapping from environment"""
-        return {
-            'speaker_0': os.getenv('VOICE_SPEAKER_0', 'N2lVS1w4EtoT3dr4eOWO'),
-            'speaker_1': os.getenv('VOICE_SPEAKER_1', 'Xb7hH8MSUJpSbSDYk0k2'),
-            'A': os.getenv('VOICE_SPEAKER_0', 'N2lVS1w4EtoT3dr4eOWO'),
-            'B': os.getenv('VOICE_SPEAKER_1', 'Xb7hH8MSUJpSbSDYk0k2')
-        }
+        from ..src.audio.voice_config import get_default_voice_mapping
+        return get_default_voice_mapping()
     
     @property
     def api_key(self) -> Optional[str]:
         """Get ElevenLabs API key"""
-        return os.getenv('ELEVENLABS_API_KEY')
+        from ..src.utils.util_env import get_env
+        return get_env('ELEVENLABS_API_KEY')
     
     def get_sample_data_dir(self) -> Path:
         """Get sample data directory"""

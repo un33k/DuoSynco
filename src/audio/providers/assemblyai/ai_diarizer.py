@@ -61,13 +61,8 @@ class AssemblyAIDiarizer(SpeakerDiarizationProvider):
         # Load from .env.local file first
         from ....utils.util_env import get_env
         
-        # Try environment variable from .env.local
+        # Try environment variable with proper priority order
         api_key = get_env('ASSEMBLYAI_API_KEY')
-        if api_key:
-            return api_key
-
-        # Try direct environment variable (fallback)
-        api_key = os.getenv('ASSEMBLYAI_API_KEY')
         if api_key:
             return api_key
 

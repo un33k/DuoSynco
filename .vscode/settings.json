@@ -58,5 +58,8 @@
     "pyenv",
     "Annunaki"
   ],
-  "makefile.configureOnOpen": false
+  "makefile.configureOnOpen": false,
+  "editor.rulers": [100],
+  "editor.wordWrap": "wordWrapColumn",
+  "editor.wordWrapColumn": 100
 }

@@ -197,21 +197,24 @@ The application supports multiple configuration methods:
 - **NEVER** use hardcoded path separators (`'/'` or `'\'` in strings)
 - **NEVER** use `os.path.join()`, `os.path.exists()`, `os.path.dirname()`, etc.
 - **ALWAYS** use Path object methods: `Path.exists()`, `Path.parent`, `Path.name`, `Path.suffix`
-- **ALWAYS** use the `/` operator for path concatenation: `Path('dir') / 'file.txt'`
+- **ALWAYS** use the `/` operator for path concatenation: `Path('dir') / Path('file.txt')`
 - **ALWAYS** define file extension and directory constants at module level
 - **NEVER** hardcode relative paths like `'./output'` - use `Path('output')` instead
+- **CRITICAL**: When concatenating paths, BOTH operands must be Path objects: `Path('dir') / Path('file')` ✅ NOT `Path('dir') / 'file'` ❌
 
 #### Examples:
 ```python
 # ✅ GOOD - Cross-platform compatible
-AUDIO_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.aac']
+AUDIO_EXTENSIONS = [Path('.mp3'), Path('.wav'), Path('.m4a'), Path('.aac')]
 DEFAULT_OUTPUT_DIR = Path('output')
+ENV_LOCAL_FILE = Path('.env.local')
 
 audio_path = Path(audio_file)
 if not audio_path.exists():
     raise FileNotFoundError(f"File not found: {audio_file}")
 
-output_file = output_dir / f"{base_name}{AUDIO_EXTENSIONS[0]}"
+output_file = output_dir / Path(f"{base_name}{AUDIO_EXTENSIONS[0]}")
+config_path = project_root / ENV_LOCAL_FILE
 file_size = audio_path.stat().st_size
 
 # ❌ BAD - Platform-specific, brittle
@@ -220,6 +223,36 @@ if not os.path.exists(audio_file):
 
 output_file = output_dir + "/" + base_name + ".mp3"
 file_size = os.path.getsize(audio_file)
+```
+
+### Environment Variable Handling
+- **ALWAYS** use the `get_env()` function from `src.utils.util_env` for environment variables
+- **NEVER** use `os.getenv()` or `os.environ.get()` directly
+- **ALWAYS** provide meaningful defaults using the `default` parameter
+- The `get_env()` function follows a priority order: custom file → .env.local → .env → system environment → default
+
+#### Priority Order:
+1. Custom file (if `file_path` parameter provided)
+2. `.env.local` file in project root
+3. `.env` file in project root  
+4. System environment variables
+5. Default value (if provided)
+
+#### Examples:
+```python
+# ✅ GOOD - Robust environment variable handling
+from ..utils.util_env import get_env
+
+api_key = get_env('ELEVENLABS_API_KEY')
+quality = get_env('DUOSYNCO_QUALITY', default='medium')
+voice_id = get_env('VOICE_SPEAKER_0', default='N2lVS1w4EtoT3dr4eOWO')
+
+# Custom config file support
+custom_api_key = get_env('API_KEY', file_path='custom_config/.env')
+
+# ❌ BAD - Direct environment access
+api_key = os.getenv('ELEVENLABS_API_KEY')
+quality = os.environ.get('DUOSYNCO_QUALITY', 'medium')
 ```
 
 ### Python Shebang Lines

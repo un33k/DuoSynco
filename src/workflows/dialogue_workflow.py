@@ -108,7 +108,7 @@ class DialogueWorkflow:
                 print("🔄 Converting transcript to dialogue format...")
             
             # Merge custom voice mapping with environment voice mapping
-            from ..utils.util_env import get_voice_mapping
+            from ..audio.voice_config import get_voice_mapping
             env_voice_mapping = get_voice_mapping()
             
             final_voice_mapping = {}
@@ -237,7 +237,7 @@ class DialogueWorkflow:
         
         try:
             # Merge custom voice mapping with environment voice mapping
-            from ..utils.util_env import get_voice_mapping
+            from ..audio.voice_config import get_voice_mapping
             env_voice_mapping = get_voice_mapping()
             
             final_voice_mapping = {}

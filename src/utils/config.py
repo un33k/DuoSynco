@@ -120,16 +120,18 @@ class Config:
         Returns:
             Config instance with settings from environment
         """
+        from .util_env import get_env
+        
         return cls(
-            quality=os.getenv('DUOSYNCO_QUALITY', 'medium'),
-            output_format=os.getenv('DUOSYNCO_FORMAT', 'mp4'),
-            backend=os.getenv('DUOSYNCO_BACKEND', 'speechbrain'),
-            verbose=os.getenv('DUOSYNCO_VERBOSE', 'false').lower() == 'true',
-            audio_sample_rate=int(os.getenv('DUOSYNCO_SAMPLE_RATE', '44100')),
-            audio_channels=int(os.getenv('DUOSYNCO_CHANNELS', '2')),
-            num_threads=int(os.getenv('DUOSYNCO_THREADS', '1')),
-            memory_limit_mb=int(os.getenv('DUOSYNCO_MEMORY_MB', '2048')),
-            cleanup_temp_files=os.getenv('DUOSYNCO_CLEANUP', 'true').lower() == 'true'
+            quality=get_env('DUOSYNCO_QUALITY', default='medium'),
+            output_format=get_env('DUOSYNCO_FORMAT', default='mp4'),
+            backend=get_env('DUOSYNCO_BACKEND', default='speechbrain'),
+            verbose=get_env('DUOSYNCO_VERBOSE', default='false').lower() == 'true',
+            audio_sample_rate=int(get_env('DUOSYNCO_SAMPLE_RATE', default='44100')),
+            audio_channels=int(get_env('DUOSYNCO_CHANNELS', default='2')),
+            num_threads=int(get_env('DUOSYNCO_THREADS', default='1')),
+            memory_limit_mb=int(get_env('DUOSYNCO_MEMORY_MB', default='2048')),
+            cleanup_temp_files=get_env('DUOSYNCO_CLEANUP', default='true').lower() == 'true'
         )
     
     @classmethod
