@@ -192,6 +192,36 @@ The application supports multiple configuration methods:
 
 ## Coding Standards
 
+### Cross-Platform Path Operations
+- **ALWAYS** use `pathlib.Path` for all file and directory operations
+- **NEVER** use hardcoded path separators (`'/'` or `'\'` in strings)
+- **NEVER** use `os.path.join()`, `os.path.exists()`, `os.path.dirname()`, etc.
+- **ALWAYS** use Path object methods: `Path.exists()`, `Path.parent`, `Path.name`, `Path.suffix`
+- **ALWAYS** use the `/` operator for path concatenation: `Path('dir') / 'file.txt'`
+- **ALWAYS** define file extension and directory constants at module level
+- **NEVER** hardcode relative paths like `'./output'` - use `Path('output')` instead
+
+#### Examples:
+```python
+# ✅ GOOD - Cross-platform compatible
+AUDIO_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.aac']
+DEFAULT_OUTPUT_DIR = Path('output')
+
+audio_path = Path(audio_file)
+if not audio_path.exists():
+    raise FileNotFoundError(f"File not found: {audio_file}")
+
+output_file = output_dir / f"{base_name}{AUDIO_EXTENSIONS[0]}"
+file_size = audio_path.stat().st_size
+
+# ❌ BAD - Platform-specific, brittle
+if not os.path.exists(audio_file):
+    raise FileNotFoundError(f"File not found: {audio_file}")
+
+output_file = output_dir + "/" + base_name + ".mp3"
+file_size = os.path.getsize(audio_file)
+```
+
 ### Python Shebang Lines
 - **NEVER** use `#!/usr/bin/env python3` in any Python files within this project
 - For executable Python scripts that need a shebang, use `#!/usr/bin/env python` which will point to the virtual environment's Python interpreter

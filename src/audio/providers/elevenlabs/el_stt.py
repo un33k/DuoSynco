@@ -85,7 +85,8 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
             
         # Try local key file (legacy fallback)
         try:
-            with open('elevenlabs_key.txt', 'r', encoding='utf-8') as f:
+            key_file = Path('elevenlabs_key.txt')
+            with open(key_file, 'r', encoding='utf-8') as f:
                 return f.read().strip()
         except FileNotFoundError:
             pass
@@ -130,10 +131,11 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
         Returns:
             Dictionary containing transcription results
         """
-        if not os.path.exists(audio_file):
+        audio_path = Path(audio_file)
+        if not audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_file}")
             
-        file_size = os.path.getsize(audio_file)
+        file_size = audio_path.stat().st_size
         if file_size > 1024 * 1024 * 1024:  # 1GB limit
             raise ValueError(f"File size {file_size/1024/1024:.1f}MB exceeds 1GB limit")
             
@@ -158,7 +160,7 @@ class ElevenLabsSTTProvider(SpeakerDiarizationProvider):
         try:
             # Open file and send request
             with open(audio_file, 'rb') as f:
-                files = {"file": (os.path.basename(audio_file), f, "audio/mpeg")}
+                files = {"file": (audio_path.name, f, "audio/mpeg")}
                 
                 logger.debug("Sending STT request with parameters: %s", data)
                 response = self.session.post(

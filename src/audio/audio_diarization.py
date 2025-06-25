@@ -41,7 +41,7 @@ class SpeakerDiarizer:
     def separate_speakers(
         self,
         audio_file: str,
-        output_dir: str = "./output",
+        output_dir: str = "output",
         speakers_expected: int = 2,
         language: str = "en",
         enhanced_processing: bool = True,

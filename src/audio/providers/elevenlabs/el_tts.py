@@ -93,7 +93,8 @@ class ElevenLabsTTSProvider(SpeakerDiarizationProvider):
             
         # Try local key file (legacy fallback)
         try:
-            with open('elevenlabs_key.txt', 'r', encoding='utf-8') as f:
+            key_file = Path('elevenlabs_key.txt')
+            with open(key_file, 'r', encoding='utf-8') as f:
                 return f.read().strip()
         except FileNotFoundError:
             pass

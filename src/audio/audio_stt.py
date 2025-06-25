@@ -48,7 +48,7 @@ class STTAudioTranscriber:
     def transcribe_audio_file(
         self,
         audio_file: str,
-        output_dir: str = "./output",
+        output_dir: str = "output",
         base_filename: Optional[str] = None,
         speakers_expected: int = 2,
         language: str = "en",
@@ -84,12 +84,12 @@ class STTAudioTranscriber:
         """
         logger.info("Starting STT transcription: %s", audio_file)
         
-        if not os.path.exists(audio_file):
+        audio_path = Path(audio_file)
+        if not audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_file}")
             
         # Generate base filename if not provided
         if base_filename is None:
-            audio_path = Path(audio_file)
             base_filename = f"stt_{audio_path.stem}"
             
         # Get quality-based settings
@@ -148,7 +148,7 @@ class STTAudioTranscriber:
         diarize: bool = True,
         tag_audio_events: bool = False,
         timestamps_granularity: str = "word",
-        output_dir: str = "./output",
+        output_dir: str = "output",
         base_filename: Optional[str] = None,
         save_results: bool = True
     ) -> Dict[str, Any]:
@@ -172,12 +172,12 @@ class STTAudioTranscriber:
         """
         logger.info("Starting custom STT transcription: %s", audio_file)
         
-        if not os.path.exists(audio_file):
+        audio_path = Path(audio_file)
+        if not audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_file}")
             
         # Generate base filename if not provided
         if base_filename is None:
-            audio_path = Path(audio_file)
             base_filename = f"stt_custom_{audio_path.stem}"
             
         # Direct STT transcription
@@ -419,13 +419,14 @@ class STTAudioTranscriber:
         
         try:
             # Check if file exists
-            if not os.path.exists(audio_file):
+            audio_path = Path(audio_file)
+            if not audio_path.exists():
                 result['errors'].append("File does not exist")
                 return result
             result['exists'] = True
             
             # Check file size (1GB limit for ElevenLabs)
-            file_size = os.path.getsize(audio_file)
+            file_size = audio_path.stat().st_size
             file_size_mb = file_size / (1024 * 1024)
             result['file_size_mb'] = file_size_mb
             

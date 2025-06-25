@@ -14,12 +14,20 @@ from .utils.util_files import FileHandler
 from .utils.config import Config
 from .video.video_sync import VideoSynchronizer
 
+# File extension constants for cross-platform compatibility
+AUDIO_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.aac']
+VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv']
+TRANSCRIPT_EXTENSIONS = ['.json', '.txt']
+SAMPLE_DATA_DIR = Path('sample_data')
+DEFAULT_OUTPUT_DIR = Path('output')
+VOICE_SAMPLES_DIR = Path('voice_samples')
+
 
 @click.command()
 @click.argument('input_file', type=click.Path(path_type=Path), required=False)
 @click.option('--output-dir', '-o',
               type=click.Path(path_type=Path),
-              default='./output',
+              default=Path('output'),
               help='Output directory for processed files')
 @click.option('--speakers', '-s',
               type=int,
@@ -687,13 +695,13 @@ def handle_tts_mode(
             click.echo("🎭 Voice cloning enabled - extracting speaker voices...")
             
             # Find the original audio file (assume it's in same dir with similar name)
-            audio_extensions = ['.mp3', '.wav', '.m4a', '.aac']
+            audio_extensions = AUDIO_EXTENSIONS
             base_name = transcript_file.stem.replace('_stt_format', '').replace('_tts_format', '').replace('_clean_dialogue', '').replace('_dialogue', '')
             original_audio = None
             
             # Look for original audio file
             for ext in audio_extensions:
-                possible_path = transcript_file.parent.parent / 'sample_data' / f"{base_name}{ext}"
+                possible_path = transcript_file.parent.parent / SAMPLE_DATA_DIR / f"{base_name}{ext}"
                 if possible_path.exists():
                     original_audio = possible_path
                     break
@@ -705,13 +713,13 @@ def handle_tts_mode(
                 speakers = list(set(seg.get('speaker', seg.get('speaker_id', '')) for seg in transcript_segments))
                 
                 # Set up voice samples directory
-                voice_samples_dir = output_dir / 'voice_samples'
+                voice_samples_dir = output_dir / VOICE_SAMPLES_DIR
                 voice_samples_dir.mkdir(exist_ok=True)
                 
                 # Check if voice samples already exist
                 speaker_samples = {}
                 for speaker in speakers:
-                    sample_file = voice_samples_dir / f"{speaker}_sample.wav"
+                    sample_file = voice_samples_dir / f"{speaker}_sample{AUDIO_EXTENSIONS[1]}"  # Use .wav
                     if sample_file.exists():
                         speaker_samples[speaker] = str(sample_file)
                         click.echo(f"✅ Using existing sample: {sample_file}")
