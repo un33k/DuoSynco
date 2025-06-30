@@ -76,9 +76,9 @@ VOICE_SAMPLES_DIR = Path("voice_samples")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 @click.option(
     "--mode",
-    type=click.Choice(["diarization", "tts", "edit", "dialogue"]),
+    type=click.Choice(["diarization", "tts", "edit", "dialogue", "debate", "news", "translate"]),
     default="diarization",
-    help="Processing mode: diarization (default), tts generation, edit workflow, or dialogue generation",
+    help="Processing mode: diarization (default), tts generation, edit workflow, dialogue generation, debate creation, news format, or translation",
 )
 @click.option(
     "--transcript-file",
@@ -221,6 +221,38 @@ VOICE_SAMPLES_DIR = Path("voice_samples")
     is_flag=True,
     help="Enable voice cloning from original audio samples (preserves accents/characteristics)",
 )
+@click.option(
+    "--content-type",
+    "-ct",
+    type=click.Choice(["debate", "news", "translate"]),
+    help="Content generation type for new modes",
+)
+@click.option(
+    "--lipsync-provider",
+    "-lp",
+    type=click.Choice(["collossyan", "heygen"]),
+    help="Lipsync provider for video generation",
+)
+@click.option(
+    "--anchor-gender",
+    "-ag",
+    type=click.Choice(["male", "female"]),
+    default="female",
+    help="News anchor gender preference",
+)
+@click.option(
+    "--debate-style",
+    "-ds",
+    type=click.Choice(["balanced", "heated", "academic"]),
+    default="balanced",
+    help="Debate style for content generation",
+)
+@click.option(
+    "--target-language",
+    "-tl",
+    type=str,
+    help="Target language for translation mode",
+)
 def cli(
     input_file: Optional[Path],
     output_dir: Path,
@@ -259,6 +291,11 @@ def cli(
     create_sample_profiles: bool,
     model_id: Optional[str],
     clone_voices: bool,
+    content_type: Optional[str],
+    lipsync_provider: Optional[str],
+    anchor_gender: str,
+    debate_style: str,
+    target_language: Optional[str],
 ) -> None:
     """
     DuoSynco - Sync videos with isolated speaker audio tracks
@@ -405,6 +442,23 @@ def cli(
             create_sample_profiles,
             voice_mapping,
             api_key,
+            verbose,
+        )
+
+    # Handle new content generation modes
+    if mode in ["debate", "news", "translate"]:
+        return handle_content_generation_mode(
+            mode,
+            input_file,
+            output_dir,
+            content_type or mode,
+            lipsync_provider,
+            anchor_gender,
+            debate_style,
+            target_language,
+            language,
+            api_key,
+            voice_mapping,
             verbose,
         )
 
@@ -1344,6 +1398,151 @@ def get_all_execution_paths() -> Dict[str, Dict[str, Any]]:
             "api_docs": "https://elevenlabs.io/docs/",
         },
     }
+
+
+def handle_content_generation_mode(
+    mode: str,
+    input_file: Optional[Path],
+    output_dir: Path,
+    content_type: str,
+    lipsync_provider: Optional[str],
+    anchor_gender: str,
+    debate_style: str,
+    target_language: Optional[str],
+    source_language: str,
+    api_key: Optional[str],
+    voice_mapping: Optional[str],
+    verbose: bool,
+) -> None:
+    """Handle new content generation modes (debate, news, translate)"""
+    
+    # Validate input
+    if not input_file:
+        click.echo(f"❌ Error: Input file required for {mode} mode", err=True)
+        sys.exit(1)
+        
+    # Import content generators
+    if mode == "debate":
+        from .content.debate import DebateGenerator
+        generator = DebateGenerator()
+    elif mode == "news":
+        from .content.news import NewsGenerator
+        generator = NewsGenerator()
+    elif mode == "translate":
+        from .content.translate import TranslateGenerator
+        generator = TranslateGenerator()
+    else:
+        click.echo(f"❌ Error: Unknown content mode: {mode}", err=True)
+        sys.exit(1)
+        
+    try:
+        # Step 1: Generate content script
+        click.echo(f"📝 Generating {mode} content...")
+        
+        input_data = {
+            "text": input_file.read_text() if input_file.suffix == ".txt" else "",
+            "url": str(input_file) if input_file.suffix == "" else "",
+            "source_language": source_language
+        }
+        
+        # Mode-specific parameters
+        kwargs = {}
+        if mode == "debate":
+            kwargs["style"] = debate_style
+        elif mode == "translate" and target_language:
+            kwargs["target_language"] = target_language
+            
+        script = generator.generate_script(input_data, **kwargs)
+        
+        # Step 2: Assign speakers
+        speaker_prefs = {}
+        if mode == "news":
+            speaker_prefs["anchor"] = {"gender": anchor_gender}
+            
+        script = generator.assign_speakers(script, speaker_prefs)
+        
+        # Step 3: Generate audio with TTS
+        click.echo("🎵 Generating audio tracks...")
+        from .audio.tts import TTSAudioGenerator
+        
+        tts = TTSAudioGenerator(provider="elevenlabs", api_key=api_key)
+        segments = generator.format_for_tts(script)
+        
+        audio_result = tts.generate_audio_tracks(
+            transcript_segments=segments,
+            total_duration=script.get("duration", 300),
+            output_dir=str(output_dir),
+            base_filename=f"{input_file.stem}_{mode}",
+            voice_mapping=voice_mapping
+        )
+        
+        # Step 4: Generate video with lipsync (if provider specified)
+        if lipsync_provider:
+            click.echo(f"🎬 Generating video with {lipsync_provider}...")
+            from .integrations.lipsync.factory import LipsyncProviderFactory
+            
+            lipsync = LipsyncProviderFactory.create_provider(lipsync_provider, api_key)
+            
+            # Determine template based on mode and speakers
+            template_id = determine_lipsync_template(mode, script)
+            
+            for audio_file in audio_result["audio_files"]:
+                video_file = output_dir / f"{Path(audio_file).stem}_video.mp4"
+                
+                video_result = lipsync.create_video(
+                    audio_file=Path(audio_file),
+                    template_id=template_id,
+                    output_file=video_file,
+                    aspect_ratio="16:9",
+                    speakers=script.get("speaker_assignments", {})
+                )
+                
+                click.echo(f"✅ Video created: {video_file}")
+                
+        # Display results
+        click.echo(f"✅ {mode.title()} content generation completed!")
+        click.echo(f"📁 Output directory: {output_dir}")
+        
+    except Exception as e:
+        click.echo(f"❌ Error in content generation: {e}", err=True)
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
+def determine_lipsync_template(mode: str, script: Dict[str, Any]) -> str:
+    """Determine appropriate lipsync template based on mode and content"""
+    
+    # This would be configured based on available templates
+    templates = {
+        "debate": {
+            "single": "debate_single_presenter",
+            "duo": "debate_side_by_side",
+            "multi": "debate_three_speakers"
+        },
+        "news": {
+            "male": "news_anchor_male",
+            "female": "news_anchor_female"
+        },
+        "translate": {
+            "default": "single_speaker_neutral"
+        }
+    }
+    
+    if mode == "debate":
+        num_speakers = len(script.get("speakers", []))
+        if num_speakers <= 1:
+            return templates["debate"]["single"]
+        elif num_speakers == 2:
+            return templates["debate"]["duo"]
+        else:
+            return templates["debate"]["multi"]
+    elif mode == "news":
+        anchor_gender = script.get("speaker_assignments", {}).get("anchor", {}).get("gender", "female")
+        return templates["news"].get(anchor_gender, templates["news"]["female"])
+    else:
+        return templates["translate"]["default"]
 
 
 if __name__ == "__main__":
