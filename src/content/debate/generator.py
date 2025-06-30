@@ -46,23 +46,47 @@ class DebateGenerator(ContentGenerator):
         duration = kwargs.get("duration", 300)  # 5 minutes default
         style = kwargs.get("style", "balanced")  # balanced, heated, academic
         
-        # In actual implementation, this would use AI to generate debate
-        # For now, create a structured template
+        # Check if LLM provider is available
+        llm_provider = kwargs.get("llm_provider")
         
-        script = {
-            "type": "debate",
-            "topic": topic,
-            "duration": duration,
-            "style": style,
-            "speakers": ["moderator", "pro", "con"],
-            "segments": []
-        }
-        
-        # Generate debate segments
-        segments = self._generate_debate_segments(topic, duration, style)
-        script["segments"] = segments
-        
-        return script
+        if llm_provider:
+            # Use LLM to generate debate
+            from ...ai.prompts.debate import DebatePrompts
+            prompts = DebatePrompts()
+            
+            system_prompt, user_prompt = prompts.get_debate_prompt(
+                topic=topic,
+                style=style,
+                duration=duration
+            )
+            
+            # Generate with LLM
+            result = llm_provider.generate(
+                prompt=user_prompt,
+                system_prompt=system_prompt
+            )
+            
+            # Parse response
+            script = prompts.parse_debate_response(result)
+            script["type"] = "debate"
+            
+            return script
+        else:
+            # Fallback to template generation
+            script = {
+                "type": "debate",
+                "topic": topic,
+                "duration": duration,
+                "style": style,
+                "speakers": ["moderator", "pro", "con"],
+                "segments": []
+            }
+            
+            # Generate debate segments
+            segments = self._generate_debate_segments(topic, duration, style)
+            script["segments"] = segments
+            
+            return script
         
     def assign_speakers(
         self,

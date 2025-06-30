@@ -1,0 +1,3 @@
+"""
+DuoSynco AI CLI module
+"""

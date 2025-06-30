@@ -47,21 +47,50 @@ class NewsGenerator(ContentGenerator):
         style = kwargs.get("style", "standard")  # standard, breaking, feature
         duration = kwargs.get("duration", 120)  # 2 minutes default
         
-        script = {
-            "type": "news",
-            "content": content,
-            "source": source_url,
-            "duration": duration,
-            "style": style,
-            "anchor": anchor_gender,
-            "segments": []
-        }
+        # Check if LLM provider is available
+        llm_provider = kwargs.get("llm_provider")
         
-        # Generate news segments
-        segments = self._generate_news_segments(content, duration, style)
-        script["segments"] = segments
-        
-        return script
+        if llm_provider:
+            # Use LLM to generate news script
+            from ...ai.prompts.news import NewsPrompts
+            prompts = NewsPrompts()
+            
+            system_prompt, user_prompt = prompts.get_news_prompt(
+                content=content,
+                style=style,
+                anchor_gender=anchor_gender
+            )
+            
+            # Generate with LLM
+            result = llm_provider.generate(
+                prompt=user_prompt,
+                system_prompt=system_prompt
+            )
+            
+            # Parse response
+            script = prompts.parse_news_response(result)
+            script["type"] = "news"
+            script["source"] = source_url
+            script["anchor"] = anchor_gender
+            
+            return script
+        else:
+            # Fallback to template generation
+            script = {
+                "type": "news",
+                "content": content,
+                "source": source_url,
+                "duration": duration,
+                "style": style,
+                "anchor": anchor_gender,
+                "segments": []
+            }
+            
+            # Generate news segments
+            segments = self._generate_news_segments(content, duration, style)
+            script["segments"] = segments
+            
+            return script
         
     def assign_speakers(
         self,
